@@ -107,3 +107,15 @@ def test_full_setup_flow(fresh_install):
     assert TestClient(main.app).post("/api/setup/password", json={"password": "x" * 8}, headers=token).status_code == 403
     assert c.get("/api/setup/status").json()["allowed"] is True
     assert c.get("/", follow_redirects=False).status_code == 200
+
+
+def test_new_password_logs_out_remembered_admins(fresh_install):
+    token = {"X-Setup-Token": main.setup_token}
+    c = TestClient(main.app)
+    assert c.post("/api/setup/password", json={"password": "hunter22"}, headers=token).status_code == 200
+    remembered = TestClient(main.app)
+    assert remembered.post("/api/admin/login", json={"password": "hunter22", "remember": True}).status_code == 200
+
+    assert c.post("/api/setup/password", json={"password": "hunter33"}, headers=token).status_code == 200
+    assert remembered.get("/api/admin/settings").status_code == 401
+    assert c.get("/api/admin/settings").status_code == 200, "whoever changed it stays logged in"

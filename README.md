@@ -111,6 +111,9 @@ Put it on a TV or print it.
 
 ## Admin page (`/admin`)
 
+- **Logging in:** tick **Remember me** to stay logged in on that device for 30 days, also across
+  restarts. Without it, you're logged out when the browser or the jukebox is closed. Changing the
+  admin password logs out every device.
 - **Queue:** pin a song to the top (⤒) or remove it (✕).
 - **Settings:** changes take effect immediately.
   | Setting | Meaning |

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import sqlite3
 import time
@@ -39,6 +40,12 @@ CREATE INDEX IF NOT EXISTS idx_queue_status ON queue_items(status);
 CREATE TABLE IF NOT EXISTS settings (
     key    TEXT PRIMARY KEY,
     value  TEXT NOT NULL
+);
+
+-- "Remember me" admin logins. Only a hash of the cookie is stored.
+CREATE TABLE IF NOT EXISTS admin_logins (
+    token_hash  TEXT PRIMARY KEY,
+    expires_at  REAL NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS spotify_auth (
@@ -140,6 +147,35 @@ def set_state(key: str, value) -> None:
                 "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
                 (f"_{key}", json.dumps(value)),
             )
+
+
+# --- remembered admin logins --------------------------------------------------
+
+def _hash_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def remember_admin(token: str, seconds: int) -> None:
+    with connect() as conn:
+        conn.execute("DELETE FROM admin_logins WHERE expires_at < ?", (time.time(),))
+        conn.execute("INSERT INTO admin_logins (token_hash, expires_at) VALUES (?, ?)",
+                     (_hash_token(token), time.time() + seconds))
+
+
+def is_remembered_admin(token: str) -> bool:
+    with connect() as conn:
+        row = conn.execute("SELECT 1 FROM admin_logins WHERE token_hash = ? AND expires_at > ?",
+                           (_hash_token(token), time.time())).fetchone()
+    return row is not None
+
+
+def forget_admin(token: str | None = None) -> None:
+    """Forget one remembered login, or all of them (when the admin password changes)."""
+    with connect() as conn:
+        if token is None:
+            conn.execute("DELETE FROM admin_logins")
+        else:
+            conn.execute("DELETE FROM admin_logins WHERE token_hash = ?", (_hash_token(token),))
 
 
 # --- users ------------------------------------------------------------------

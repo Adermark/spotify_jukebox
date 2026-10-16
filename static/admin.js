@@ -106,7 +106,7 @@ async function disconnect() {
 $("login-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   try {
-    await api("POST", "/api/admin/login", { password: $("password").value });
+    await api("POST", "/api/admin/login", { password: $("password").value, remember: $("remember").checked });
     $("password").value = "";
     refresh();
   } catch (e) { toast(e.message, true); }
