@@ -140,8 +140,8 @@ async def admin_page():
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
-    # Browsers ask for /favicon.ico on their own (e.g. for the JSON API pages); serve the SVG.
-    return FileResponse(STATIC_DIR / "favicon.svg", media_type="image/svg+xml")
+    # Browsers also ask for /favicon.ico on their own, e.g. on the JSON API pages.
+    return FileResponse(STATIC_DIR / "favicon.ico", media_type="image/x-icon")
 
 
 @app.get("/setup", include_in_schema=False)

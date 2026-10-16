@@ -51,10 +51,12 @@ def add(c, n):
 
 
 def test_favicon(client):
-    for path in ("/favicon.ico", "/static/favicon.svg"):
+    assert client.get("/favicon.ico").headers["content-type"] == "image/x-icon"
+    for path in ("/static/icon-192.png", "/static/apple-touch-icon.png"):
         r = client.get(path)
-        assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml")
-    assert 'rel="icon"' in client.get("/").text
+        assert r.status_code == 200 and r.headers["content-type"] == "image/png"
+    page = client.get("/").text
+    assert 'href="/favicon.ico"' in page and 'rel="apple-touch-icon"' in page
 
 
 def test_queue_flow_with_limits_and_fairness(client):
