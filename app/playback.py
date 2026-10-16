@@ -76,6 +76,10 @@ class Playback:
     async def play_next_now(self):
         return await self.active.play_next_now()
 
+    async def interrupt_auto_mode(self):
+        """Fade out the fallback music and start the jukebox queue."""
+        return await self.active.interrupt_auto_mode(self.play_next_now)
+
     async def skip(self):
         await self.active.skip()
 

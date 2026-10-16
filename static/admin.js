@@ -13,6 +13,7 @@ const SETTINGS = [
   ["max_track_minutes", "Max song length (minutes)", "0 = unlimited."],
   ["auto_play", "Auto-play", "Start the next song when playback is stopped (not when paused mid-song)."],
   ["interrupt_auto_mode", "Interrupt auto-mode", "When the queue was empty, play newly added songs immediately instead of waiting for fallback music to finish."],
+  ["auto_mode_volume", "Fallback music volume (%)", "Volume of the music that plays when the queue is empty, as a percentage of the volume during jukebox songs. 100 = no change."],
   ["push_seconds_before_end", "Hand next song to the player (seconds before end)", "Songs handed over can no longer be removed or reordered."],
 ];
 

@@ -190,5 +190,11 @@ class Spotify:
     async def skip(self) -> None:
         await self._request("POST", "/me/player/next")
 
+    async def set_volume(self, percent: int, device_id: str | None = None) -> None:
+        params = {"volume_percent": max(0, min(100, percent))}
+        if device_id:
+            params["device_id"] = device_id
+        await self._request("PUT", "/me/player/volume", params=params)
+
 
 spotify = Spotify()

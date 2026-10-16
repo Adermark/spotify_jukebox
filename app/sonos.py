@@ -227,6 +227,21 @@ class SonosController:
                 k.pause()
         await self._run(pause)
 
+    async def volume(self) -> int | None:
+        """Volume of the whole group (0-100)."""
+        def read():
+            k = self._coordinator()
+            return k.group.volume if k else None
+        return await self._run(read)
+
+    async def set_volume(self, volume: int) -> None:
+        """Set the group's volume; Sonos keeps the rooms' levels relative to each other."""
+        def write():
+            k = self._coordinator()
+            if k:
+                k.group.volume = volume
+        await self._run(write)
+
     async def seek(self, position_ms: int) -> None:
         s = position_ms // 1000
         await self._run(lambda: self._coordinator().seek(f"{s // 3600}:{s // 60 % 60:02d}:{s % 60:02d}"))
