@@ -52,7 +52,7 @@ def add(c, n):
 
 def test_favicon(client):
     assert client.get("/favicon.ico").headers["content-type"] == "image/x-icon"
-    for path in ("/static/icon-192.png", "/static/apple-touch-icon.png"):
+    for path in ("/static/icon-192.png", "/static/apple-touch-icon.png", "/static/logo.png"):
         r = client.get(path)
         assert r.status_code == 200 and r.headers["content-type"] == "image/png"
     page = client.get("/").text
