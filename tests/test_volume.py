@@ -113,36 +113,68 @@ def test_pause_volume_above_jukebox_volume_means_no_change(client, fast):
     v = make(dev)
     run(v.update("fallback"))
     assert dev.history == []
-    assert v.status() == {"mode": "pause", "volume": 80, "max": 80}
+    assert v.status() == {"mode": "pause", "volume": 80, "pause_volume": 80}
 
 
-def test_slider_sets_jukebox_volume_during_jukebox_songs(client, fast):
+def test_volume_slider_during_jukebox_songs_sets_the_device(client, fast):
     db.update_settings({"pause_volume": 40})
     dev = FakeDevice(80)
     v = make(dev)
-    assert run(v.set_from_admin(60)) == {"mode": "jukebox", "volume": 60, "max": 100}
+    v.current = 80
+    assert run(v.set_from_admin(volume=60)) == {"mode": "jukebox", "volume": 60, "pause_volume": 40}
     assert dev.volume == 60
-    assert db.get_settings()["pause_volume"] == 40
 
 
-def test_slider_sets_pause_volume_during_fallback_clamped_to_jukebox_volume(client, fast):
+def test_pause_slider_during_jukebox_songs_is_saved_for_later(client, fast):
+    dev = FakeDevice(80)
+    v = make(dev)
+    v.current = 80
+    run(v.set_from_admin(pause_volume=30))
+    assert dev.history == [], "jukebox song keeps playing at its volume"
+    run(v.update("fallback"))
+    assert dev.volume == 30
+
+
+def test_pause_slider_is_clamped_to_jukebox_volume(client, fast):
+    dev = FakeDevice(50)
+    v = make(dev)
+    v.current = 50
+    assert run(v.set_from_admin(pause_volume=90))["pause_volume"] == 50
+    assert db.get_settings()["pause_volume"] == 50
+
+
+def test_sliders_during_fallback_change_what_plays(client, fast):
     db.update_settings({"pause_volume": 40})
     dev = FakeDevice(80)
     v = make(dev)
     run(v.update("fallback"))
-    assert run(v.set_from_admin(25)) == {"mode": "pause", "volume": 25, "max": 80}
-    assert db.get_settings()["pause_volume"] == 25
-    run(v.set_from_admin(95))
-    assert dev.volume == 80 and db.get_settings()["pause_volume"] == 80
+    assert v.status() == {"mode": "pause", "volume": 80, "pause_volume": 40}
+
+    run(v.set_from_admin(pause_volume=25))
+    assert dev.volume == 25
+
+    # Turning the jukebox volume below the pause volume takes fallback music down with it,
+    # but the pause volume is kept for when the jukebox volume goes back up.
+    assert run(v.set_from_admin(volume=20)) == {"mode": "pause", "volume": 20, "pause_volume": 20}
+    assert dev.volume == 20
+    run(v.set_from_admin(volume=70))
+    assert dev.volume == 25
+
     run(v.update("ours"))
-    assert dev.volume == 80
+    assert dev.volume == 70
+
+
+def test_status_when_volume_cant_be_controlled(client):
+    v = make(FakeDevice(controllable=False))
+    assert v.status() == {"mode": None, "volume": None, "pause_volume": None}
 
 
 def test_lower_jukebox_volume_clamps_next_fallback(client, fast):
     db.update_settings({"pause_volume": 40})
     dev = FakeDevice(80)
     v = make(dev)
-    run(v.set_from_admin(30))
+    v.current = 80
+    run(v.set_from_admin(volume=30))
     run(v.update("fallback"))
     assert dev.volume == 30, "fallback is never louder than the jukebox volume"
     assert db.get_settings()["pause_volume"] == 40, "the pause volume is kept for later"

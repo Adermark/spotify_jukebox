@@ -30,47 +30,48 @@ async function checkStatus() {
 }
 
 // --- volume -----------------------------------------------------------------------------
-// During fallback music the slider sets the pause volume (at most the jukebox volume);
-// otherwise it sets the jukebox volume.
+// Two sliders: the jukebox volume, and the fallback music volume, which is never louder.
+// The device follows whichever one is playing right now.
 
+const VOLUME_SLIDERS = { volume: "volume", pause_volume: "pause-volume" };
 let volume = null;
-let draggingVolume = false;
+let draggingVolume = null;  // the slider being dragged: don't move it under the pointer
 
 function renderVolume(v) {
   volume = v;
   $("volume-box").classList.toggle("hidden", !v);
   if (!v) return;
-  const slider = $("volume");
   const controllable = v.volume !== null;
-  slider.disabled = !controllable;
-  if (!draggingVolume && controllable) slider.value = v.volume;
-  $("volume-value").textContent = controllable ? slider.value : "";
-  if (!controllable) {
-    $("volume-label").textContent = "Volume";
-    $("volume-help").textContent = "The jukebox can't change the volume on this device.";
-  } else if (v.mode === "pause") {
-    $("volume-label").textContent = "Fallback music volume";
-    $("volume-help").textContent = `Fallback music is playing. This sets its volume from now on, up to the jukebox volume (${v.max}).`;
-  } else {
-    $("volume-label").textContent = "Volume";
-    $("volume-help").textContent = "Jukebox songs play at this volume. Fallback music is never louder.";
+  $("volume-unavailable").classList.toggle("hidden", controllable);
+  for (const [key, id] of Object.entries(VOLUME_SLIDERS)) {
+    const slider = $(id);
+    slider.disabled = !controllable;
+    if (controllable && draggingVolume !== key) slider.value = v[key];
+    $(id + "-value").textContent = controllable ? slider.value : "";
   }
+  $("pause-volume-help").textContent = v.mode === "pause"
+    ? "Fallback music is playing now. It's never louder than the volume above."
+    : "Plays when the queue is empty. It's never louder than the volume above.";
 }
 
-$("volume").addEventListener("pointerdown", () => { draggingVolume = true; });
-$("volume").addEventListener("input", () => {
-  const value = Number($("volume").value);
-  $("volume-value").textContent = volume?.mode === "pause" ? Math.min(value, volume.max) : value;
-});
-$("volume").addEventListener("change", async () => {
-  draggingVolume = false;
-  try {
-    renderVolume(await api("PUT", "/api/admin/volume", { volume: Number($("volume").value) }));
-  } catch (e) {
-    toast(e.message, true);
-    checkStatus();
-  }
-});
+for (const [key, id] of Object.entries(VOLUME_SLIDERS)) {
+  const slider = $(id);
+  slider.addEventListener("pointerdown", () => { draggingVolume = key; });
+  slider.addEventListener("input", () => {
+    let value = Number(slider.value);
+    if (key === "pause_volume") value = Math.min(value, Number($("volume").value));
+    $(id + "-value").textContent = value;
+  });
+  slider.addEventListener("change", async () => {
+    draggingVolume = null;
+    try {
+      renderVolume(await api("PUT", "/api/admin/volume", { [key]: Number(slider.value) }));
+    } catch (e) {
+      toast(e.message, true);
+      checkStatus();
+    }
+  });
+}
 
 function renderStatus(s) {
   const box = $("spotify-status");

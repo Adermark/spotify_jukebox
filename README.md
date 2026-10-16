@@ -138,14 +138,15 @@ Songs are started as a track within their album, because the Windows desktop cli
 single-track play command but stays silent. So if the jukebox queue runs dry after a song started
 this way, Spotify continues that album.
 
-**Volume slider:** the top of the admin page shows the current volume.
-- While jukebox songs play, the slider sets the jukebox volume.
-- While fallback music plays (the queue is empty), it sets the fallback music volume, which is kept
-  for next time. Fallback music is never louder than the jukebox volume, and the volume goes back up
-  when the next jukebox song starts.
-- Changing the volume on the device itself works the same way.
+**Volume sliders:** the top of the admin page has two.
+- **Volume** is what jukebox songs play at.
+- **Fallback music volume** is what plays when the queue is empty. It's never louder than the
+  volume above: turn that below it and fallback music follows. The volume goes back up when the
+  next jukebox song starts.
+- Both can be changed at any time. The speakers follow whichever one is playing right now.
+- Changing the volume on the device itself changes whichever one is playing.
 
-The slider and the fade-out need a device that lets apps change its volume. The
+The sliders and the fade-out need a device that lets apps change its volume. The
 Spotify desktop app (Windows and macOS) and most speakers do, iPhones don't. In the desktop app it
 moves Spotify's own volume slider, not the computer's volume. On Sonos it changes the volume of
 the whole group, and TV sound and line-in are never turned down.

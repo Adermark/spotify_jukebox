@@ -108,7 +108,8 @@ select {
 
 .volume { margin-top: 14px; }
 .volume .help { display: block; color: var(--muted); font-size: 0.85rem; }
-.volume input[type="range"] { width: 100%; margin: 8px 0 0; accent-color: var(--accent); }
+.volume label { display: block; margin-top: 10px; }
+.volume input[type="range"] { width: 100%; margin: 6px 0 0; accent-color: var(--accent); }
 .settings { display: grid; gap: 14px; }
 .setting { display: flex; justify-content: space-between; align-items: center; gap: 16px; }
 .setting label { flex: 1; }

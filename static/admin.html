@@ -29,9 +29,13 @@
         <button id="logout" class="link" style="margin-left:auto">Log out</button>
       </div>
       <div id="volume-box" class="volume hidden">
-        <label for="volume"><span id="volume-label">Volume</span> <strong id="volume-value"></strong>
-          <span id="volume-help" class="help"></span></label>
+        <p id="volume-unavailable" class="help hidden">The jukebox can't change the volume on this device.</p>
+        <label for="volume">Volume <strong id="volume-value"></strong>
+          <span class="help">Jukebox songs play at this volume.</span></label>
         <input id="volume" type="range" min="0" max="100">
+        <label for="pause-volume">Fallback music volume <strong id="pause-volume-value"></strong>
+          <span id="pause-volume-help" class="help"></span></label>
+        <input id="pause-volume" type="range" min="0" max="100">
       </div>
     </section>
 

@@ -83,8 +83,8 @@ class Playback:
     def volume_status(self) -> dict:
         return self.active.volume.status()
 
-    async def set_volume(self, volume: int) -> dict:
-        return await self.active.volume.set_from_admin(volume)
+    async def set_volume(self, volume: int | None = None, pause_volume: int | None = None) -> dict:
+        return await self.active.volume.set_from_admin(volume, pause_volume)
 
     async def skip(self):
         await self.active.skip()

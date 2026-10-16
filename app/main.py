@@ -315,13 +315,14 @@ async def admin_status(request: Request):
 
 
 class VolumeBody(BaseModel):
-    volume: int
+    volume: int | None = None        # jukebox volume
+    pause_volume: int | None = None  # fallback music volume
 
 
 @app.put("/api/admin/volume", dependencies=[Depends(require_admin)])
 async def put_volume(body: VolumeBody):
     try:
-        return await playback.set_volume(body.volume)
+        return await playback.set_volume(body.volume, body.pause_volume)
     except (SpotifyError, SonosError) as e:
         raise HTTPException(409, f"Couldn't change the volume: {e}")
 

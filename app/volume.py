@@ -57,11 +57,14 @@ class AutoModeVolume:
         return db.get_settings()["pause_volume"]
 
     def status(self) -> dict:
-        """For the admin page: which volume the slider changes, and its current value."""
+        """For the admin page's sliders. volume is the jukebox volume; pause_volume is what
+        fallback music plays at (never above the jukebox volume). None = can't be controlled."""
+        if self.current is None:
+            return {"mode": None, "volume": None, "pause_volume": None}
         normal = self.normal
-        if normal is not None:
-            return {"mode": "pause", "volume": self.current, "max": normal}
-        return {"mode": "jukebox", "volume": self.current, "max": 100}
+        jukebox = normal if normal is not None else self.current
+        return {"mode": "pause" if normal is not None else "jukebox", "volume": jukebox,
+                "pause_volume": min(jukebox, self.pause_volume())}
 
     async def update(self, playing: str | None, current: int | None = None) -> None:
         """Called on every player tick. playing is "ours" (a jukebox song), "fallback"
@@ -107,16 +110,23 @@ class AutoModeVolume:
             self.normal = current
         log.info("Volume changed on the device: pause volume is now %s", current)
 
-    async def set_from_admin(self, volume: int) -> dict:
-        """The admin's slider. During fallback music it sets the pause volume (at most the
-        jukebox volume); otherwise it sets the jukebox volume."""
-        volume = max(0, min(100, int(volume)))
+    async def set_from_admin(self, volume: int | None = None, pause_volume: int | None = None) -> dict:
+        """The admin's sliders: the jukebox volume and the pause volume (at most the jukebox
+        volume). The device follows whichever one is playing right now."""
         async with self._lock:
             normal = self.normal
+            jukebox = normal if normal is not None else self.current
+            if volume is not None:
+                jukebox = max(0, min(100, int(volume)))
+                if normal is None:
+                    await self._set(jukebox)
+                else:
+                    self.normal = jukebox
+            if pause_volume is not None:
+                limit = jukebox if jukebox is not None else 100
+                db.update_settings({"pause_volume": max(0, min(limit, int(pause_volume)))})
             if normal is not None:
-                volume = min(volume, normal)
-                db.update_settings({"pause_volume": volume})
-            await self._set(volume)
+                await self._set(min(jukebox, self.pause_volume()))
         return self.status()
 
     async def interrupt(self, play: Callable[[], Awaitable]):
