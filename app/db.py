@@ -285,13 +285,14 @@ def mark_now_playing(track_uri: str | None) -> None:
     """Called when Spotify starts a new track: finish the old one, promote ours if it matches."""
     now = time.time()
     with connect() as conn:
-        conn.execute("UPDATE queue_items SET status = 'played', played_at = ? WHERE status = 'playing'", (now,))
-        if not track_uri:
-            return
         row = conn.execute(
             "SELECT id, sent_at FROM queue_items WHERE status = 'sent' AND track_uri = ? ORDER BY sent_at LIMIT 1",
             (track_uri,),
-        ).fetchone()
+        ).fetchone() if track_uri else None
+        if row is None and track_uri and conn.execute(
+                "SELECT 1 FROM queue_items WHERE status = 'playing' AND track_uri = ?", (track_uri,)).fetchone():
+            return  # still the same song, e.g. seen again after a restart: it's still ours
+        conn.execute("UPDATE queue_items SET status = 'played', played_at = ? WHERE status = 'playing'", (now,))
         if row is None:
             return
         conn.execute("UPDATE queue_items SET status = 'playing' WHERE id = ?", (row["id"],))

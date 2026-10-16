@@ -116,6 +116,20 @@ def test_no_autostart_when_disabled(client, fake, no_grace):
     assert fake.played == []
 
 
+def test_restart_mid_song_keeps_it_as_ours(client, fake):
+    add(guest(client, "Eve"), 1)
+    fake.playing("spotify:track:x", progress=190_000)
+    p = Player()
+    run(p.tick())                      # pushes song 1
+    run(fake.skip())                   # song 1 starts
+    run(p.tick())
+    assert p.now_playing["added_by"] == "Eve"
+    restarted = Player()               # a new player knows nothing about what was playing
+    run(restarted.tick())
+    assert restarted.now_playing["added_by"] == "Eve"
+    assert not restarted.is_in_auto_mode()
+
+
 def test_push_near_end_of_track_only_once(client, fake):
     add(guest(client, "Eve"), 1)
     fake.playing("spotify:track:x", progress=190_000)
