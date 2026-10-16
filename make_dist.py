@@ -2,7 +2,7 @@
 
 Only the files listed below go in, so personal files (.env with your Spotify secret and
 admin password, jukebox.db with your Spotify login and history, .venv) can never slip in.
-Docker files and tests are left out; the README's Docker and Tests sections are removed.
+Docker files and tests are left out, and so are the README's developer sections.
 """
 import datetime
 import re
@@ -14,7 +14,7 @@ INCLUDE = ["START HERE.txt", "README.md", "run.bat", "run.sh", "run.command", "r
            ".env.example", "app", "static"]
 SKIP_DIRS = {"__pycache__"}
 SKIP_SUFFIXES = {".pyc", ".pyo", ".db"}
-README_SECTIONS_TO_DROP = ("Docker", "Tests", "Making a zip to share")
+README_SECTIONS_TO_DROP = ("Docker", "Development", "Tests", "Making a zip to share", "Contributing")
 
 
 def files() -> list[Path]:
