@@ -50,6 +50,13 @@ def add(c, n):
     return c.post("/api/queue", json={"uri": f"spotify:track:{n:022d}"})
 
 
+def test_favicon(client):
+    for path in ("/favicon.ico", "/static/favicon.svg"):
+        r = client.get(path)
+        assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml")
+    assert 'rel="icon"' in client.get("/").text
+
+
 def test_queue_flow_with_limits_and_fairness(client):
     alice, bob = guest(client, "Alice"), guest(client, "Bob")
     for n in (1, 2, 3):
