@@ -56,3 +56,11 @@ def test_expired_login_is_refused(client):
         conn.execute("UPDATE admin_logins SET expires_at = 0")
     restart()
     assert c.get("/api/admin/settings").status_code == 401
+
+
+def test_admin_status_shows_what_is_playing(client):
+    from app.playback import playback
+    c, _ = login(remember=False)
+    playback.active.now_playing = {"title": "Fallback Song", "artists": "A", "is_playing": True, "added_by": None}
+    assert c.get("/api/admin/status").json()["now_playing"]["title"] == "Fallback Song"
+    playback.active.now_playing = None

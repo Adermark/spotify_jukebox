@@ -25,9 +25,52 @@ async function checkStatus() {
   $("panel").classList.toggle("hidden", !s.admin);
   if (!s.admin) return false;
   renderStatus(s);
+  renderNowPlaying(s.now_playing);
   renderVolume(s.volume);
   return true;
 }
+
+// --- now playing ------------------------------------------------------------------------
+
+let nowPlaying = null;
+let nowFetchedAt = 0;
+
+function renderNowPlaying(np) {
+  nowPlaying = np;
+  nowFetchedAt = Date.now();
+  const box = $("admin-now");
+  if (!np) {
+    box.replaceChildren(el("p", { class: "muted" }, "Nothing playing right now."));
+    return;
+  }
+  const source = np.added_by
+    ? el("div", {}, el("span", { class: "badge accent" }, "Queue"), " Added by ", el("span", { class: "who" }, np.added_by))
+    : el("div", {}, el("span", { class: "badge" }, "Fallback music"), " ",
+        el("span", { class: "muted" }, "The queue is empty, so Spotify plays on by itself."));
+  box.replaceChildren(
+    el("div", { class: "now" },
+      art(np.album_art),
+      el("div", { class: "info", style: "flex:1;min-width:0" },
+        el("div", { class: "title" }, np.title),
+        el("div", { class: "muted" }, np.artists),
+        source,
+        el("div", { class: "muted" }, [np.is_playing ? null : "Paused", np.device ? `On ${np.device}` : null]
+          .filter(Boolean).join(" · ")),
+        el("div", { class: "progress" }, el("div", { id: "admin-progress-bar" })),
+      ),
+    ),
+  );
+  tickNowPlaying();
+}
+
+function tickNowPlaying() {
+  const np = nowPlaying;
+  const bar = $("admin-progress-bar");
+  if (!np || !bar || !np.duration_ms) return;
+  const elapsed = np.is_playing ? Date.now() - nowFetchedAt : 0;
+  bar.style.width = Math.min(100, ((np.progress_ms + elapsed) / np.duration_ms) * 100) + "%";
+}
+setInterval(tickNowPlaying, 500);
 
 // --- volume -----------------------------------------------------------------------------
 // Two sliders: the jukebox volume, and the fallback music volume, which is never louder.
