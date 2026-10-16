@@ -320,6 +320,7 @@ async def admin_status(request: Request):
         "error": playback.error,
         "playback_mode": db.get_settings()["playback_mode"],
         "volume": playback.volume_status(),
+        "now_playing": playback.now_playing,
         "redirect_uri": config.redirect_uri,
         "client_configured": bool(config.client_id and config.client_secret),
     }
