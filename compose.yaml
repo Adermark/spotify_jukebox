@@ -1,0 +1,22 @@
+# For an always-on Linux machine (Raspberry Pi, home server, NAS):
+#   docker compose up -d
+#   docker compose logs     <- shows the one-time setup link on first start
+#
+# Host networking lets the app see the real LAN address and announce jukebox.local.
+# It only fully works on Linux. On Docker Desktop (Windows/macOS), use compose.desktop.yaml
+# instead, or simply run.bat / run.py.
+services:
+  jukebox:
+    build: .
+    restart: unless-stopped
+    network_mode: host
+    env_file:
+      - path: .env
+        required: false   # optional; the setup page saves to /data/config.env
+    environment:
+      DATABASE_PATH: /data/jukebox.db
+    volumes:
+      - jukebox-data:/data
+
+volumes:
+  jukebox-data:

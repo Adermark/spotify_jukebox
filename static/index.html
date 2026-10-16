@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jukebox</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <h1>🎵 Jukebox <small id="whoami"></small></h1>
+
+  <!-- Shown until the guest has picked a name -->
+  <section id="join" class="card hidden">
+    <p>Pick a name so everyone can see who added which song.</p>
+    <form id="join-form" class="row">
+      <input id="join-name" type="text" maxlength="30" placeholder="Your name" required autocomplete="nickname">
+      <button type="submit">Join</button>
+    </form>
+  </section>
+
+  <section id="not-connected" class="card hidden">
+    <p class="muted">The jukebox isn't connected to Spotify yet. Ask the host to connect it.</p>
+  </section>
+
+  <h2>Now playing</h2>
+  <section id="now" class="card">
+    <p class="muted">Nothing playing right now.</p>
+  </section>
+
+  <section id="search-section" class="hidden">
+    <h2>Add a song</h2>
+    <input id="search" type="search" placeholder="Search Spotify…" autocomplete="off">
+    <p id="limit-info" class="muted"></p>
+    <ul id="results" class="tracks"></ul>
+  </section>
+
+  <h2>Queue <span id="queue-count" class="badge"></span></h2>
+  <ul id="queue" class="tracks"></ul>
+  <p id="queue-empty" class="muted hidden">The queue is empty. Add something!</p>
+</main>
+<div id="toast" class="hidden"></div>
+<script src="/static/common.js"></script>
+<script src="/static/app.js"></script>
+</body>
+</html>

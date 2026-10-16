@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Join the Jukebox</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <style>
+    body { min-height: 100vh; display: grid; place-items: center; text-align: center; }
+    .share { padding: 24px 16px; }
+    .share h1 { justify-content: center; font-size: clamp(1.8rem, 5vw, 3.2rem); margin-bottom: 8px; }
+    .share p { font-size: clamp(1rem, 2.5vw, 1.4rem); color: var(--muted); margin: 0 0 24px; }
+    .qr { background: #fff; padding: 16px; border-radius: 16px; display: inline-block; }
+    .qr img { display: block; width: min(70vw, 50vh, 520px); height: auto; }
+    .url { margin-top: 20px; font-size: clamp(1.1rem, 3vw, 2rem); font-weight: 600; color: var(--accent); word-break: break-all; }
+    .now { justify-content: center; margin-top: 28px; color: var(--muted); }
+  </style>
+</head>
+<body>
+<div class="share">
+  <h1>🎵 Jukebox</h1>
+  <p>Scan to add songs to the queue</p>
+  <div class="qr"><img src="/share/qr.svg" alt="QR code for the jukebox link"></div>
+  <div id="url" class="url"></div>
+  <div id="ip" class="muted"></div>
+  <div id="now" class="now"></div>
+</div>
+<script src="/static/common.js"></script>
+<script>
+  // A display page: put it on a TV or screen at the party.
+  async function update() {
+    try {
+      const [share, state] = await Promise.all([api("GET", "/api/share"), api("GET", "/api/state")]);
+      const pretty = (u) => (u || "").replace(/^http:\/\//, "").replace(/\/$/, "");
+      document.getElementById("url").textContent = pretty(share.friendly);
+      document.getElementById("ip").textContent =
+        share.ip && share.ip !== share.friendly ? `or ${pretty(share.ip)}` : "";
+      const np = state.now_playing;
+      document.getElementById("now").textContent = np
+        ? `Now playing: ${np.title} · ${np.artists}${np.added_by ? ` (added by ${np.added_by})` : ""}`
+        : "";
+    } catch (e) { console.warn(e); }
+  }
+  update();
+  setInterval(update, 5000);
+</script>
+</body>
+</html>

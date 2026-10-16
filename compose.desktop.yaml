@@ -1,0 +1,24 @@
+# Docker Desktop (Windows/macOS):
+#   docker compose -f compose.desktop.yaml up -d
+#   docker compose -f compose.desktop.yaml logs     <- shows the one-time setup link on first start
+#
+# Containers run inside a VM here, so the app can't see the computer's LAN address and
+# jukebox.local isn't announced. Set HOST_IP in .env to the computer's LAN IP
+# (e.g. 192.168.1.81) so the guest link and QR code are right; update it when you change network.
+services:
+  jukebox:
+    build: .
+    restart: unless-stopped
+    env_file:
+      - path: .env
+        required: false   # optional; the setup page saves to /data/config.env
+    environment:
+      DATABASE_PATH: /data/jukebox.db
+      MDNS_NAME: ""
+    ports:
+      - "${PORT:-8000}:${PORT:-8000}"
+    volumes:
+      - jukebox-data:/data
+
+volumes:
+  jukebox-data:

@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jukebox Admin</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <h1>🎛️ Jukebox admin <small><a href="/setup" class="muted">setup</a> · <a href="/" class="muted">guest view</a></small></h1>
+
+  <section id="login" class="card hidden">
+    <form id="login-form" class="row">
+      <input id="password" type="password" placeholder="Admin password" required autocomplete="current-password">
+      <button type="submit">Log in</button>
+    </form>
+  </section>
+
+  <div id="panel" class="hidden">
+    <section class="card">
+      <div id="spotify-status"></div>
+      <div class="row" style="margin-top:12px;flex-wrap:wrap">
+        <button id="play-next" class="secondary">▶ Play next now</button>
+        <button id="skip" class="secondary">⏭ Skip</button>
+        <button id="logout" class="link" style="margin-left:auto">Log out</button>
+      </div>
+    </section>
+
+    <section class="card" style="margin-top:12px">
+      <div class="row" style="flex-wrap:wrap">
+        <span class="muted">Guest link:</span>
+        <strong id="share-url" style="color:var(--accent)"></strong>
+        <button id="copy-url" class="secondary">Copy</button>
+        <a href="/share" target="_blank"><button class="secondary">QR code / TV screen</button></a>
+      </div>
+      <p id="share-alt" class="muted" style="margin:8px 0 0;font-size:0.85rem"></p>
+    </section>
+
+    <div class="tabs" style="margin-top:16px">
+      <button data-tab="queue" class="active">Queue</button>
+      <button data-tab="settings">Settings</button>
+      <button data-tab="users">Users</button>
+      <button data-tab="history">History</button>
+    </div>
+
+    <section id="tab-queue">
+      <ul id="queue" class="tracks"></ul>
+      <p id="queue-empty" class="muted hidden">The queue is empty.</p>
+    </section>
+
+    <section id="tab-settings" class="card hidden">
+      <form id="settings-form" class="settings"></form>
+    </section>
+
+    <section id="tab-users" class="card hidden">
+      <table>
+        <thead><tr><th>Name</th><th>In queue</th><th>Total added</th><th></th></tr></thead>
+        <tbody id="users"></tbody>
+      </table>
+    </section>
+
+    <section id="tab-history" class="card hidden">
+      <table>
+        <thead><tr><th>Song</th><th>Added by</th><th>Added</th><th>Status</th></tr></thead>
+        <tbody id="history"></tbody>
+      </table>
+    </section>
+  </div>
+</main>
+<div id="toast" class="hidden"></div>
+<script src="/static/common.js"></script>
+<script src="/static/admin.js"></script>
+</body>
+</html>

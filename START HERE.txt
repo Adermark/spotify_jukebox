@@ -1,0 +1,48 @@
+JUKEBOX - a shared Spotify queue for parties and offices
+========================================================
+
+Guests open a web page on their phone, search for songs and add them to the queue.
+Everyone sees the queue and who added what. Music plays through your Spotify account
+(on this computer, your phone, or Sonos speakers).
+
+You need
+--------
+- Spotify Premium (Spotify doesn't let apps control playback on free accounts).
+- Python 3.11 or newer.
+  Windows: run.bat offers to install it if it's missing.
+  Mac: install it from https://www.python.org/downloads/macos/ first
+  (the python3 that comes with macOS is usually too old).
+
+Getting started (Windows)
+-------------------------
+1. Unzip this folder somewhere in your user folder, e.g. Documents\Jukebox.
+   (Not in Program Files: the jukebox saves its settings next to itself.)
+2. Double-click run.bat.
+   The first start takes a minute while it installs what it needs.
+3. Your browser opens the setup page. It guides you through:
+   - choosing an admin password,
+   - creating a free Spotify app (step by step, about 5 minutes),
+   - connecting your Spotify account.
+4. If Windows Firewall asks about Python, click "Allow" (private networks),
+   otherwise guests' phones can't reach the jukebox.
+
+Getting started (Mac)
+---------------------
+1. Unzip, and move the jukebox folder somewhere in your home folder, e.g. Documents.
+2. Double-click run.command. It opens in Terminal.
+   The first time, macOS may say it "can't be opened because it is from an
+   unidentified developer": right-click run.command, choose Open, then Open again.
+3. Your browser opens the setup page, as on Windows.
+4. If the macOS firewall asks whether Python may accept incoming connections,
+   click "Allow", otherwise guests' phones can't reach the jukebox.
+
+Linux: run ./run.sh in a terminal.
+
+Every next time
+---------------
+Double-click run.bat (Mac: run.command). The admin page opens; it shows the link
+and QR code for guests.
+Guests must be on the same Wi-Fi/network as this computer.
+Close the window to stop the jukebox.
+
+More details: README.md

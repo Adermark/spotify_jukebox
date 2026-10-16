@@ -1,0 +1,5 @@
+# Line endings per file type, whatever the checkout platform.
+* text=auto
+*.bat     text eol=crlf
+*.sh      text eol=lf
+*.command text eol=lf
