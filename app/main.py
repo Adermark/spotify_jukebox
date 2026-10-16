@@ -308,9 +308,22 @@ async def admin_status(request: Request):
         "connected": spotify.is_connected(),
         "error": playback.error,
         "playback_mode": db.get_settings()["playback_mode"],
+        "volume": playback.volume_status(),
         "redirect_uri": config.redirect_uri,
         "client_configured": bool(config.client_id and config.client_secret),
     }
+
+
+class VolumeBody(BaseModel):
+    volume: int
+
+
+@app.put("/api/admin/volume", dependencies=[Depends(require_admin)])
+async def put_volume(body: VolumeBody):
+    try:
+        return await playback.set_volume(body.volume)
+    except (SpotifyError, SonosError) as e:
+        raise HTTPException(409, f"Couldn't change the volume: {e}")
 
 
 @app.get("/api/admin/settings", dependencies=[Depends(require_admin)])

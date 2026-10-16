@@ -80,6 +80,12 @@ class Playback:
         """Fade out the fallback music and start the jukebox queue."""
         return await self.active.interrupt_auto_mode(self.play_next_now)
 
+    def volume_status(self) -> dict:
+        return self.active.volume.status()
+
+    async def set_volume(self, volume: int) -> dict:
+        return await self.active.volume.set_from_admin(volume)
+
     async def skip(self):
         await self.active.skip()
 

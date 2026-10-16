@@ -13,7 +13,6 @@ const SETTINGS = [
   ["max_track_minutes", "Max song length (minutes)", "0 = unlimited."],
   ["auto_play", "Auto-play", "Start the next song when playback is stopped (not when paused mid-song)."],
   ["interrupt_auto_mode", "Interrupt auto-mode", "When the queue was empty, play newly added songs immediately instead of waiting for fallback music to finish."],
-  ["auto_mode_volume", "Fallback music volume (%)", "Volume of the music that plays when the queue is empty, as a percentage of the volume during jukebox songs. 100 = no change."],
   ["push_seconds_before_end", "Hand next song to the player (seconds before end)", "Songs handed over can no longer be removed or reordered."],
 ];
 
@@ -26,8 +25,52 @@ async function checkStatus() {
   $("panel").classList.toggle("hidden", !s.admin);
   if (!s.admin) return false;
   renderStatus(s);
+  renderVolume(s.volume);
   return true;
 }
+
+// --- volume -----------------------------------------------------------------------------
+// During fallback music the slider sets the pause volume (at most the jukebox volume);
+// otherwise it sets the jukebox volume.
+
+let volume = null;
+let draggingVolume = false;
+
+function renderVolume(v) {
+  volume = v;
+  $("volume-box").classList.toggle("hidden", !v);
+  if (!v) return;
+  const slider = $("volume");
+  const controllable = v.volume !== null;
+  slider.disabled = !controllable;
+  if (!draggingVolume && controllable) slider.value = v.volume;
+  $("volume-value").textContent = controllable ? slider.value : "";
+  if (!controllable) {
+    $("volume-label").textContent = "Volume";
+    $("volume-help").textContent = "The jukebox can't change the volume on this device.";
+  } else if (v.mode === "pause") {
+    $("volume-label").textContent = "Fallback music volume";
+    $("volume-help").textContent = `Fallback music is playing. This sets its volume from now on, up to the jukebox volume (${v.max}).`;
+  } else {
+    $("volume-label").textContent = "Volume";
+    $("volume-help").textContent = "Jukebox songs play at this volume. Fallback music is never louder.";
+  }
+}
+
+$("volume").addEventListener("pointerdown", () => { draggingVolume = true; });
+$("volume").addEventListener("input", () => {
+  const value = Number($("volume").value);
+  $("volume-value").textContent = volume?.mode === "pause" ? Math.min(value, volume.max) : value;
+});
+$("volume").addEventListener("change", async () => {
+  draggingVolume = false;
+  try {
+    renderVolume(await api("PUT", "/api/admin/volume", { volume: Number($("volume").value) }));
+  } catch (e) {
+    toast(e.message, true);
+    checkStatus();
+  }
+});
 
 function renderStatus(s) {
   const box = $("spotify-status");

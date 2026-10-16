@@ -103,8 +103,14 @@ class SonosPlayer:
             }
 
         # Only Spotify tracks count as fallback music: TV sound and line-in keep their volume.
-        if st.state == "PLAYING" and st.uri:
-            await self.volume.update("ours" if self.is_playing_ours() else "fallback")
+        if st.state == "PLAYING":
+            playing = ("ours" if self.is_playing_ours() else "fallback") if st.uri else None
+            try:
+                current = await self.c.volume()
+            except SonosError as e:
+                log.warning("Couldn't read the volume: %s", e)
+                current = None
+            await self.volume.update(playing, current)
 
         # Hand the next song to the speakers shortly before this one ends.
         push_ms = db.get_settings()["push_seconds_before_end"] * 1000

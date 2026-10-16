@@ -142,8 +142,13 @@ class Player:
             self.warning = restricted_message(pb)
             return  # Spotify won't take queue commands for this device
 
-        if pb.get("is_playing"):
-            await self.volume.update("ours" if ours else "fallback")
+        device = pb.get("device") or {}
+        self._volume_device = device.get("id")
+        device_volume = device.get("volume_percent") if device.get("supports_volume", True) else None
+        if device_volume is None:
+            self.volume.current = None  # the slider is disabled for this device
+        await self.volume.update(("ours" if ours else "fallback") if pb.get("is_playing") else None,
+                                 device_volume)
 
         # Hand the next song to Spotify shortly before this one ends.
         # If our queue is empty we keep checking on each tick until the track ends.

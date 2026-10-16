@@ -125,7 +125,6 @@ Put it on a TV or print it.
   | Max song length | In minutes (0 = unlimited) |
   | Auto-play | Start the next song when Spotify is stopped (not when paused mid-song) |
   | Interrupt auto-mode | When the queue was empty, play newly added songs immediately instead of waiting for fallback music to finish. The fallback music fades out first |
-  | Fallback music volume | Volume of the music that plays when the queue is empty, in % of the volume during jukebox songs (100 = no change). The volume goes back up when the next jukebox song starts |
   | Hand next song to Spotify | Seconds before the end of the current song |
 - **Users:** see how many songs each user has added, and block or unblock them. Blocking removes their
   waiting songs.
@@ -139,7 +138,14 @@ Songs are started as a track within their album, because the Windows desktop cli
 single-track play command but stays silent. So if the jukebox queue runs dry after a song started
 this way, Spotify continues that album.
 
-**Fallback music volume** and the fade-out need a device that lets apps change its volume. The
+**Volume slider:** the top of the admin page shows the current volume.
+- While jukebox songs play, the slider sets the jukebox volume.
+- While fallback music plays (the queue is empty), it sets the fallback music volume, which is kept
+  for next time. Fallback music is never louder than the jukebox volume, and the volume goes back up
+  when the next jukebox song starts.
+- Changing the volume on the device itself works the same way.
+
+The slider and the fade-out need a device that lets apps change its volume. The
 Spotify desktop app (Windows and macOS) and most speakers do, iPhones don't. In the desktop app it
 moves Spotify's own volume slider, not the computer's volume. On Sonos it changes the volume of
 the whole group, and TV sound and line-in are never turned down.

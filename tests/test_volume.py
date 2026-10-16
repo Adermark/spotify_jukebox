@@ -49,7 +49,7 @@ def run(coro):
 
 
 def test_fallback_is_faded_down_and_restored_for_jukebox_song(client, fast):
-    db.update_settings({"auto_mode_volume": 50})
+    db.update_settings({"pause_volume": 40})
     dev = FakeDevice(80)
     v = make(dev)
 
@@ -65,32 +65,91 @@ def test_fallback_is_faded_down_and_restored_for_jukebox_song(client, fast):
     assert dev.volume == 80
 
 
-def test_manual_change_during_fallback_is_kept(client, fast):
-    db.update_settings({"auto_mode_volume": 50})
+def test_manual_change_during_fallback_becomes_the_pause_volume(client, fast, monkeypatch):
+    monkeypatch.setattr(volume_mod, "QUIET_SECONDS", -1)
+    db.update_settings({"pause_volume": 40})
     dev = FakeDevice(80)
     v = make(dev)
     run(v.update("fallback"))
-    dev.volume = 30  # host turns it down by hand
+    run(v.update("fallback", 30))  # host turns it down by hand
+    assert dev.volume == 40, "the device already is at 30; nothing to set"
+    assert db.get_settings()["pause_volume"] == 30
+    run(v.update("ours"))
+    assert dev.volume == 80
+
+
+def test_turning_fallback_above_jukebox_volume_raises_both(client, fast, monkeypatch):
+    monkeypatch.setattr(volume_mod, "QUIET_SECONDS", -1)
+    db.update_settings({"pause_volume": 40})
+    dev = FakeDevice(80)
+    v = make(dev)
     run(v.update("fallback"))
-    assert dev.volume == 30
+    run(v.update("fallback", 90))
+    assert db.get_settings()["pause_volume"] == 90
+    run(v.update("ours"))
+    assert dev.volume == 90
+
+
+def test_our_own_volume_changes_are_not_taken_as_manual(client, fast):
+    db.update_settings({"pause_volume": 40})
+    dev = FakeDevice(80)
+    v = make(dev)
+    run(v.update("fallback"))
+    run(v.update("fallback", 52))  # a stale reading from mid-fade
+    assert db.get_settings()["pause_volume"] == 40
 
 
 def test_paused_or_unknown_leaves_volume(client, fast):
-    db.update_settings({"auto_mode_volume": 50})
+    db.update_settings({"pause_volume": 40})
     dev = FakeDevice(80)
     v = make(dev)
     run(v.update(None))
     assert dev.history == []
 
 
-def test_100_percent_means_no_change(client, fast):
+def test_pause_volume_above_jukebox_volume_means_no_change(client, fast):
+    db.update_settings({"pause_volume": 90})
     dev = FakeDevice(80)
-    run(make(dev).update("fallback"))
+    v = make(dev)
+    run(v.update("fallback"))
     assert dev.history == []
+    assert v.status() == {"mode": "pause", "volume": 80, "max": 80}
+
+
+def test_slider_sets_jukebox_volume_during_jukebox_songs(client, fast):
+    db.update_settings({"pause_volume": 40})
+    dev = FakeDevice(80)
+    v = make(dev)
+    assert run(v.set_from_admin(60)) == {"mode": "jukebox", "volume": 60, "max": 100}
+    assert dev.volume == 60
+    assert db.get_settings()["pause_volume"] == 40
+
+
+def test_slider_sets_pause_volume_during_fallback_clamped_to_jukebox_volume(client, fast):
+    db.update_settings({"pause_volume": 40})
+    dev = FakeDevice(80)
+    v = make(dev)
+    run(v.update("fallback"))
+    assert run(v.set_from_admin(25)) == {"mode": "pause", "volume": 25, "max": 80}
+    assert db.get_settings()["pause_volume"] == 25
+    run(v.set_from_admin(95))
+    assert dev.volume == 80 and db.get_settings()["pause_volume"] == 80
+    run(v.update("ours"))
+    assert dev.volume == 80
+
+
+def test_lower_jukebox_volume_clamps_next_fallback(client, fast):
+    db.update_settings({"pause_volume": 40})
+    dev = FakeDevice(80)
+    v = make(dev)
+    run(v.set_from_admin(30))
+    run(v.update("fallback"))
+    assert dev.volume == 30, "fallback is never louder than the jukebox volume"
+    assert db.get_settings()["pause_volume"] == 40, "the pause volume is kept for later"
 
 
 def test_device_without_volume_control_is_left_alone(client, fast):
-    db.update_settings({"auto_mode_volume": 50})
+    db.update_settings({"pause_volume": 40})
     dev = FakeDevice(80, controllable=False)
     v = make(dev)
     run(v.update("fallback"))
@@ -100,7 +159,7 @@ def test_device_without_volume_control_is_left_alone(client, fast):
 
 
 def test_normal_volume_survives_restart(client, fast):
-    db.update_settings({"auto_mode_volume": 50})
+    db.update_settings({"pause_volume": 40})
     dev = FakeDevice(80)
     run(make(dev).update("fallback"))
     run(make(dev).update("ours"))  # a new instance, as after a restart
@@ -108,7 +167,7 @@ def test_normal_volume_survives_restart(client, fast):
 
 
 def test_interrupt_fades_out_then_starts_song_at_normal_volume(client, fast):
-    db.update_settings({"auto_mode_volume": 50})
+    db.update_settings({"pause_volume": 40})
     dev = FakeDevice(80)
     v = make(dev)
     run(v.update("fallback"))
@@ -144,5 +203,5 @@ def test_interrupt_restores_volume_when_play_fails(client, fast):
 
 
 def test_setting_is_clamped_to_100(client):
-    assert db.update_settings({"auto_mode_volume": 250})["auto_mode_volume"] == 100
+    assert db.update_settings({"pause_volume": 250})["pause_volume"] == 100
     assert "_normal_volume_test" not in db.get_settings()
