@@ -28,7 +28,8 @@ class SonosPlayer:
         self._autostart_after = 0.0
         self._hold_until = 0.0  # ignore the speakers' state until then (regrouping in progress)
         self._lock = asyncio.Lock()
-        self.volume = AutoModeVolume("sonos", lambda: self.c.volume(), lambda v: self.c.set_volume(v))
+        self.volume = AutoModeVolume("sonos", lambda: self.c.volume(), lambda v: self.c.set_volume(v),
+                                     lambda: self.c.pause(), lambda: self.c.resume())
 
     def hold(self, seconds: float = 8) -> None:
         """Regrouping makes Sonos report in-between states (and can move group leadership);

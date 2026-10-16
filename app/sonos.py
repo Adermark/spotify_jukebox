@@ -242,6 +242,13 @@ class SonosController:
                 k.group.volume = volume
         await self._run(write)
 
+    async def resume(self) -> None:
+        def resume():
+            k = self._coordinator()
+            if k and k.get_current_transport_info()["current_transport_state"] != "PLAYING":
+                k.play()
+        await self._run(resume)
+
     async def seek(self, position_ms: int) -> None:
         s = position_ms // 1000
         await self._run(lambda: self._coordinator().seek(f"{s // 3600}:{s // 60 % 60:02d}:{s % 60:02d}"))

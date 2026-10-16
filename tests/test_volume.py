@@ -14,6 +14,8 @@ class FakeDevice:
         self.volume = volume
         self.controllable = controllable
         self.history: list[int] = []
+        self.playing = True
+        self.calls: list[str] = []
 
     async def get(self):
         return self.volume if self.controllable else None
@@ -21,6 +23,14 @@ class FakeDevice:
     async def set(self, v):
         self.volume = v
         self.history.append(v)
+
+    async def pause(self):
+        self.playing = False
+        self.calls.append("pause")
+
+    async def resume(self):
+        self.playing = True
+        self.calls.append("resume")
 
 
 @pytest.fixture
@@ -31,7 +41,7 @@ def fast(monkeypatch):
 
 
 def make(device):
-    return AutoModeVolume("test", device.get, device.set)
+    return AutoModeVolume("test", device.get, device.set, device.pause, device.resume)
 
 
 def run(coro):
@@ -86,7 +96,7 @@ def test_device_without_volume_control_is_left_alone(client, fast):
     run(v.update("fallback"))
     assert dev.history == []
     run(v.interrupt(lambda: asyncio.sleep(0)))
-    assert dev.history == []
+    assert dev.history == [] and dev.calls == []
 
 
 def test_normal_volume_survives_restart(client, fast):
@@ -97,20 +107,23 @@ def test_normal_volume_survives_restart(client, fast):
     assert dev.volume == 80
 
 
-def test_interrupt_fades_out_plays_and_restores_normal_volume(client, fast):
+def test_interrupt_fades_out_then_starts_song_at_normal_volume(client, fast):
     db.update_settings({"auto_mode_volume": 50})
     dev = FakeDevice(80)
     v = make(dev)
     run(v.update("fallback"))
-    volume_when_played = []
+    when_played = []
 
     async def play():
-        volume_when_played.append(dev.volume)
+        when_played.append((dev.volume, dev.playing))
         return "song"
 
     assert run(v.interrupt(play)) == "song"
-    assert volume_when_played == [0]
-    assert dev.volume == 80
+    assert 0 in dev.history, "should fade all the way out"
+    # Paused and back at normal volume before the song starts, so none of it is quiet.
+    assert when_played == [(80, False)]
+    assert dev.calls == ["pause", "resume"]
+    assert dev.playing and dev.volume == 80
 
     # The player can still report the old fallback track right after the skip.
     run(v.update("fallback"))
@@ -127,6 +140,7 @@ def test_interrupt_restores_volume_when_play_fails(client, fast):
     with pytest.raises(RuntimeError):
         run(v.interrupt(play))
     assert dev.volume == 70
+    assert dev.playing, "the fallback music should keep playing"
 
 
 def test_setting_is_clamped_to_100(client):

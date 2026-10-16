@@ -62,7 +62,8 @@ class Player:
         self._autostart_after = 0.0  # don't auto-start before this time (gives Spotify time to react)
         self._lock = asyncio.Lock()  # serialises Spotify queue changes from the loop and admin actions
         self._volume_device: str | None = None
-        self.volume = AutoModeVolume("spotify", self._get_volume, self._set_volume)
+        self.volume = AutoModeVolume("spotify", self._get_volume, self._set_volume,
+                                     lambda: spotify.pause(), self._resume)
 
     def is_playing_ours(self) -> bool:
         """True if a jukebox-queued song is currently loaded or playing."""
@@ -251,6 +252,12 @@ class Player:
 
     async def _set_volume(self, percent: int) -> None:
         await spotify.set_volume(percent, self._volume_device)
+
+    async def _resume(self) -> None:
+        """Skipping while paused may leave Spotify paused; start it unless it's playing."""
+        pb = await spotify.playback()
+        if not (pb or {}).get("is_playing"):
+            await spotify.resume(self._volume_device)
 
     async def _device_id(self) -> str | None:
         """Device to play on: the one picked in settings if it's online, else Spotify's active one.

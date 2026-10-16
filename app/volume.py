@@ -23,11 +23,14 @@ SETTLE_SECONDS = 10
 
 class AutoModeVolume:
     def __init__(self, name: str, get_volume: Callable[[], Awaitable[int | None]],
-                 set_volume: Callable[[int], Awaitable[None]]):
+                 set_volume: Callable[[int], Awaitable[None]],
+                 pause: Callable[[], Awaitable[None]], resume: Callable[[], Awaitable[None]]):
         """get_volume returns None when the device's volume can't be controlled."""
         self._key = f"normal_volume_{name}"
         self._get = get_volume
         self._set = set_volume
+        self._pause = pause
+        self._resume = resume
         self._lock = asyncio.Lock()
         self._lower_after = 0.0
 
@@ -65,27 +68,35 @@ class AutoModeVolume:
             log.warning("Couldn't change the volume: %s", e)
 
     async def interrupt(self, play: Callable[[], Awaitable]):
-        """Fade the fallback music out, run play() to start the jukebox song, then put the
-        normal volume back. The volume is restored even if play() fails."""
+        """Fade the fallback music out and run play() to start the jukebox song.
+
+        Once the fade reaches 0 the player is paused and the normal volume put back while it's
+        silent, so the song starts from its first second at full volume. Raising the volume
+        after the skip instead loses the start of the song: each player call takes a moment.
+        Playback is resumed whether play() works or not.
+        """
         async with self._lock:
-            restore = None
+            faded = False
             try:
                 current = await self._get()
                 if current is not None:
                     restore = self.normal if self.normal is not None else current
                     await self._fade(current, 0, FADE_OUT_SECONDS)
+                    faded = True
+                    await self._pause()
+                    await self._set(restore)
+                    self.normal = None
             except Exception as e:
                 log.warning("Couldn't fade out: %s", e)
             try:
                 return await play()
             finally:
                 self._lower_after = time.time() + SETTLE_SECONDS
-                if restore is not None:
+                if faded:
                     try:
-                        await self._set(restore)
-                        self.normal = None
+                        await self._resume()
                     except Exception as e:
-                        log.warning("Couldn't restore the volume: %s", e)
+                        log.warning("Couldn't resume playback: %s", e)
 
     async def _fade(self, start: int, end: int, seconds: float) -> None:
         steps = max(1, min(abs(end - start), round(seconds / STEP_SECONDS)))

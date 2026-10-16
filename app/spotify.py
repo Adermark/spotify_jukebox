@@ -187,6 +187,9 @@ class Spotify:
     async def pause(self) -> None:
         await self._request("PUT", "/me/player/pause")
 
+    async def resume(self, device_id: str | None = None) -> None:
+        await self._request("PUT", "/me/player/play", params={"device_id": device_id} if device_id else None)
+
     async def skip(self) -> None:
         await self._request("POST", "/me/player/next")
 
