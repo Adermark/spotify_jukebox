@@ -204,6 +204,12 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+## Contributing
+
+`main` is the release branch and `develop` is the working branch. Work happens in `feature/` or
+`fix/` branches off `develop`, merged back through pull requests. See [AGENTS.md](AGENTS.md) for
+the full workflow, including how to release.
+
 ## Code map
 
 | File | What |
