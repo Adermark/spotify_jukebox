@@ -6,6 +6,7 @@ import time
 from . import db
 from .queue_logic import order_queue
 from .spotify import SpotifyError, spotify
+from .volume import AutoModeVolume
 
 log = logging.getLogger("jukebox.player")
 
@@ -60,6 +61,9 @@ class Player:
         self._stopped_since: float | None = None
         self._autostart_after = 0.0  # don't auto-start before this time (gives Spotify time to react)
         self._lock = asyncio.Lock()  # serialises Spotify queue changes from the loop and admin actions
+        self._volume_device: str | None = None
+        self.volume = AutoModeVolume("spotify", self._get_volume, self._set_volume,
+                                     lambda: spotify.pause(), self._resume)
 
     def is_playing_ours(self) -> bool:
         """True if a jukebox-queued song is currently loaded or playing."""
@@ -138,6 +142,14 @@ class Player:
             self.warning = restricted_message(pb)
             return  # Spotify won't take queue commands for this device
 
+        device = pb.get("device") or {}
+        self._volume_device = device.get("id")
+        device_volume = device.get("volume_percent") if device.get("supports_volume", True) else None
+        if device_volume is None:
+            self.volume.current = None  # the slider is disabled for this device
+        await self.volume.update(("ours" if ours else "fallback") if pb.get("is_playing") else None,
+                                 device_volume)
+
         # Hand the next song to Spotify shortly before this one ends.
         # If our queue is empty we keep checking on each tick until the track ends.
         push_ms = db.get_settings()["push_seconds_before_end"] * 1000
@@ -175,6 +187,10 @@ class Player:
                     db.mark_sent(target["id"])
             log.info("Jumped to: %s (added by %s)", target["title"], target["added_by"])
             return target
+
+    async def interrupt_auto_mode(self, play) -> dict | None:
+        """Fade the fallback music out and run play() to start the jukebox queue."""
+        return await self.volume.interrupt(play)
 
     async def snapshot(self) -> tuple[str, int] | None:
         """(track uri, position) if Spotify is playing a track on a device we can control."""
@@ -228,6 +244,25 @@ class Player:
         self._pushed_for_current = True
 
     # --- helpers -------------------------------------------------------------------------
+
+    async def _get_volume(self) -> int | None:
+        """The playing device's volume, or None if Spotify can't change it there."""
+        if not spotify.is_connected():
+            return None
+        device = ((await spotify.playback()) or {}).get("device") or {}
+        if device.get("is_restricted") or not device.get("supports_volume", True):
+            return None
+        self._volume_device = device.get("id")
+        return device.get("volume_percent")
+
+    async def _set_volume(self, percent: int) -> None:
+        await spotify.set_volume(percent, self._volume_device)
+
+    async def _resume(self) -> None:
+        """Skipping while paused may leave Spotify paused; start it unless it's playing."""
+        pb = await spotify.playback()
+        if not (pb or {}).get("is_playing"):
+            await spotify.resume(self._volume_device)
 
     async def _device_id(self) -> str | None:
         """Device to play on: the one picked in settings if it's online, else Spotify's active one.

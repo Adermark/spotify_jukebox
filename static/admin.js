@@ -25,7 +25,52 @@ async function checkStatus() {
   $("panel").classList.toggle("hidden", !s.admin);
   if (!s.admin) return false;
   renderStatus(s);
+  renderVolume(s.volume);
   return true;
+}
+
+// --- volume -----------------------------------------------------------------------------
+// Two sliders: the jukebox volume, and the fallback music volume, which is never louder.
+// The device follows whichever one is playing right now.
+
+const VOLUME_SLIDERS = { volume: "volume", pause_volume: "pause-volume" };
+let volume = null;
+let draggingVolume = null;  // the slider being dragged: don't move it under the pointer
+
+function renderVolume(v) {
+  volume = v;
+  $("volume-box").classList.toggle("hidden", !v);
+  if (!v) return;
+  const controllable = v.volume !== null;
+  $("volume-unavailable").classList.toggle("hidden", controllable);
+  for (const [key, id] of Object.entries(VOLUME_SLIDERS)) {
+    const slider = $(id);
+    slider.disabled = !controllable;
+    if (controllable && draggingVolume !== key) slider.value = v[key];
+    $(id + "-value").textContent = controllable ? slider.value : "";
+  }
+  $("pause-volume-help").textContent = v.mode === "pause"
+    ? "Fallback music is playing now. It's never louder than the volume above."
+    : "Plays when the queue is empty. It's never louder than the volume above.";
+}
+
+for (const [key, id] of Object.entries(VOLUME_SLIDERS)) {
+  const slider = $(id);
+  slider.addEventListener("pointerdown", () => { draggingVolume = key; });
+  slider.addEventListener("input", () => {
+    let value = Number(slider.value);
+    if (key === "pause_volume") value = Math.min(value, Number($("volume").value));
+    $(id + "-value").textContent = value;
+  });
+  slider.addEventListener("change", async () => {
+    draggingVolume = null;
+    try {
+      renderVolume(await api("PUT", "/api/admin/volume", { [key]: Number(slider.value) }));
+    } catch (e) {
+      toast(e.message, true);
+      checkStatus();
+    }
+  });
 }
 
 function renderStatus(s) {

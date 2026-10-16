@@ -25,6 +25,13 @@ class FakeSonos:
         self.progress_ms = 0
         self.grouped = 0
         self.taken_over = 0
+        self.group_volume = 30
+
+    async def volume(self):
+        return self.group_volume
+
+    async def set_volume(self, volume):
+        self.group_volume = volume
 
     async def status(self):
         current = self.queue[self.position - 1] if self.position else None

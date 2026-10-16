@@ -11,6 +11,7 @@ from . import db
 from .player import STOPPED_GRACE_SECONDS, next_queued, upcoming
 from .sonos import SonosController, SonosError
 from .spotify import spotify
+from .volume import AutoModeVolume
 
 log = logging.getLogger("jukebox.sonos")
 
@@ -27,6 +28,8 @@ class SonosPlayer:
         self._autostart_after = 0.0
         self._hold_until = 0.0  # ignore the speakers' state until then (regrouping in progress)
         self._lock = asyncio.Lock()
+        self.volume = AutoModeVolume("sonos", lambda: self.c.volume(), lambda v: self.c.set_volume(v),
+                                     lambda: self.c.pause(), lambda: self.c.resume())
 
     def hold(self, seconds: float = 8) -> None:
         """Regrouping makes Sonos report in-between states (and can move group leadership);
@@ -98,6 +101,16 @@ class SonosPlayer:
                 "fetched_at": now,
                 "device": st.room,
             }
+
+        # Only Spotify tracks count as fallback music: TV sound and line-in keep their volume.
+        if st.state == "PLAYING":
+            playing = ("ours" if self.is_playing_ours() else "fallback") if st.uri else None
+            try:
+                current = await self.c.volume()
+            except SonosError as e:
+                log.warning("Couldn't read the volume: %s", e)
+                current = None
+            await self.volume.update(playing, current)
 
         # Hand the next song to the speakers shortly before this one ends.
         push_ms = db.get_settings()["push_seconds_before_end"] * 1000
@@ -174,6 +187,10 @@ class SonosPlayer:
                 await self.c.seek(position_ms)
             self._autostart_after = time.time() + 10
             self.hold(4)
+
+    async def interrupt_auto_mode(self, play) -> dict | None:
+        """Fade the fallback music out and run play() to start the jukebox queue."""
+        return await self.volume.interrupt(play)
 
     async def snapshot(self) -> tuple[str, int] | None:
         """(track uri, position) if the speakers are playing a Spotify track."""

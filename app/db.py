@@ -61,6 +61,7 @@ DEFAULT_SETTINGS = {
     "push_seconds_before_end": 15,  # when to hand the next song to Spotify
     "auto_play": True,              # start the queue when Spotify is stopped
     "interrupt_auto_mode": True,    # interrupt auto-mode (fallback playlist / radio) when a song is queued
+    "pause_volume": 100,            # fallback music volume (0-100), never above the jukebox volume
     "device_id": "",                # Spotify device to play on ("" = Spotify's active device)
     "playback_mode": "spotify",     # "spotify" (Spotify Connect) or "sonos" (direct Sonos control)
     "sonos_rooms": "",              # comma-separated Sonos room ids; the first leads the group
@@ -109,6 +110,8 @@ def update_settings(changes: dict) -> dict:
                 raise ValueError("playback_mode must be spotify or sonos")
         else:
             clean[key] = max(0, int(value))
+            if key == "pause_volume":
+                clean[key] = min(100, clean[key])
     with connect() as conn:
         conn.executemany(
             "INSERT INTO settings (key, value) VALUES (?, ?) "
@@ -116,6 +119,27 @@ def update_settings(changes: dict) -> dict:
             [(k, json.dumps(v)) for k, v in clean.items()],
         )
     return get_settings()
+
+
+# Internal state kept between restarts. It shares the settings table under keys starting
+# with "_", which get_settings() never returns.
+
+def get_state(key: str, default=None):
+    with connect() as conn:
+        row = conn.execute("SELECT value FROM settings WHERE key = ?", (f"_{key}",)).fetchone()
+    return json.loads(row["value"]) if row else default
+
+
+def set_state(key: str, value) -> None:
+    with connect() as conn:
+        if value is None:
+            conn.execute("DELETE FROM settings WHERE key = ?", (f"_{key}",))
+        else:
+            conn.execute(
+                "INSERT INTO settings (key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (f"_{key}", json.dumps(value)),
+            )
 
 
 # --- users ------------------------------------------------------------------
@@ -261,13 +285,14 @@ def mark_now_playing(track_uri: str | None) -> None:
     """Called when Spotify starts a new track: finish the old one, promote ours if it matches."""
     now = time.time()
     with connect() as conn:
-        conn.execute("UPDATE queue_items SET status = 'played', played_at = ? WHERE status = 'playing'", (now,))
-        if not track_uri:
-            return
         row = conn.execute(
             "SELECT id, sent_at FROM queue_items WHERE status = 'sent' AND track_uri = ? ORDER BY sent_at LIMIT 1",
             (track_uri,),
-        ).fetchone()
+        ).fetchone() if track_uri else None
+        if row is None and track_uri and conn.execute(
+                "SELECT 1 FROM queue_items WHERE status = 'playing' AND track_uri = ?", (track_uri,)).fetchone():
+            return  # still the same song, e.g. seen again after a restart: it's still ours
+        conn.execute("UPDATE queue_items SET status = 'played', played_at = ? WHERE status = 'playing'", (now,))
         if row is None:
             return
         conn.execute("UPDATE queue_items SET status = 'playing' WHERE id = ?", (row["id"],))

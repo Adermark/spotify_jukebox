@@ -7,7 +7,7 @@ import webbrowser
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, HTTPException, Request, Response
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, Response
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -224,7 +224,7 @@ TRACK_URI = re.compile(r"^spotify:track:([A-Za-z0-9]{22})$")
 
 
 @app.post("/api/queue")
-async def add_to_queue(body: AddBody, user: dict = Depends(require_user)):
+async def add_to_queue(body: AddBody, background: BackgroundTasks, user: dict = Depends(require_user)):
     m = TRACK_URI.match(body.uri)
     if not m:
         raise HTTPException(400, "Not a Spotify track")
@@ -246,15 +246,20 @@ async def add_to_queue(body: AddBody, user: dict = Depends(require_user)):
     was_empty = not upcoming()
     item_id = db.add_item(user["id"], track)
 
-    # Interrupt auto-mode (fallback playlist / radio) if the queue was empty.
+    # Interrupt auto-mode (fallback playlist / radio) if the queue was empty. It fades the
+    # music out first, so it runs after the response: the guest doesn't wait for the fade.
     if (was_empty and playback.is_in_auto_mode()
             and s["auto_play"] and s.get("interrupt_auto_mode", True) and playback.can_play()):
-        try:
-            await playback.play_next_now()
-        except Exception as e:
-            log.warning("Could not interrupt auto-mode: %s", e)
+        background.add_task(interrupt_auto_mode)
 
     return {"id": item_id}
+
+
+async def interrupt_auto_mode() -> None:
+    try:
+        await playback.interrupt_auto_mode()
+    except Exception as e:
+        log.warning("Could not interrupt auto-mode: %s", e)
 
 
 @app.delete("/api/queue/{item_id}")
@@ -303,9 +308,23 @@ async def admin_status(request: Request):
         "connected": spotify.is_connected(),
         "error": playback.error,
         "playback_mode": db.get_settings()["playback_mode"],
+        "volume": playback.volume_status(),
         "redirect_uri": config.redirect_uri,
         "client_configured": bool(config.client_id and config.client_secret),
     }
+
+
+class VolumeBody(BaseModel):
+    volume: int | None = None        # jukebox volume
+    pause_volume: int | None = None  # fallback music volume
+
+
+@app.put("/api/admin/volume", dependencies=[Depends(require_admin)])
+async def put_volume(body: VolumeBody):
+    try:
+        return await playback.set_volume(body.volume, body.pause_volume)
+    except (SpotifyError, SonosError) as e:
+        raise HTTPException(409, f"Couldn't change the volume: {e}")
 
 
 @app.get("/api/admin/settings", dependencies=[Depends(require_admin)])

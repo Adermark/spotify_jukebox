@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Jukebox Admin</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/icon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="/static/icon-192.png">
+  <link rel="apple-touch-icon" href="/static/icon-180.png">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -24,6 +27,15 @@
         <button id="play-next" class="secondary">▶ Play next now</button>
         <button id="skip" class="secondary">⏭ Skip</button>
         <button id="logout" class="link" style="margin-left:auto">Log out</button>
+      </div>
+      <div id="volume-box" class="volume hidden">
+        <p id="volume-unavailable" class="help hidden">The jukebox can't change the volume on this device.</p>
+        <label for="volume">Volume <strong id="volume-value"></strong>
+          <span class="help">Jukebox songs play at this volume.</span></label>
+        <input id="volume" type="range" min="0" max="100">
+        <label for="pause-volume">Fallback music volume <strong id="pause-volume-value"></strong>
+          <span id="pause-volume-help" class="help"></span></label>
+        <input id="pause-volume" type="range" min="0" max="100">
       </div>
     </section>
 
