@@ -60,6 +60,7 @@ DEFAULT_SETTINGS = {
     "max_track_minutes": 10,        # 0 = unlimited
     "push_seconds_before_end": 15,  # when to hand the next song to Spotify
     "auto_play": True,              # start the queue when Spotify is stopped
+    "interrupt_auto_mode": True,    # interrupt auto-mode (fallback playlist / radio) when a song is queued
     "device_id": "",                # Spotify device to play on ("" = Spotify's active device)
     "playback_mode": "spotify",     # "spotify" (Spotify Connect) or "sonos" (direct Sonos control)
     "sonos_rooms": "",              # comma-separated Sonos room ids; the first leads the group
