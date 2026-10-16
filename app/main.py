@@ -30,8 +30,10 @@ ADMIN_COOKIE = "jb_admin"
 STATE_COOKIE = "jb_oauth_state"
 NEXT_COOKIE = "jb_oauth_next"
 ONE_YEAR = 365 * 24 * 3600
+REMEMBER_ADMIN_SECONDS = 30 * 24 * 3600
 
-# Admin sessions live in memory; restarting the server logs the admin out.
+# Admin sessions live in memory; restarting the server logs the admin out. Logins with
+# "Remember me" are kept in the database instead, so they survive restarts.
 admin_sessions: set[str] = set()
 
 # Until setup is finished, the setup page only works with this one-time token. It's shown in
@@ -100,7 +102,8 @@ def require_user(request: Request) -> dict:
 
 
 def is_admin(request: Request) -> bool:
-    return request.cookies.get(ADMIN_COOKIE) in admin_sessions
+    token = request.cookies.get(ADMIN_COOKIE)
+    return bool(token) and (token in admin_sessions or db.is_remembered_admin(token))
 
 
 def require_admin(request: Request) -> None:
@@ -276,25 +279,33 @@ async def remove_own(item_id: int, user: dict = Depends(require_user)):
 
 class LoginBody(BaseModel):
     password: str
+    remember: bool = False
 
 
 @app.post("/api/admin/login")
 async def admin_login(body: LoginBody, response: Response):
     if not check_password(body.password):
         raise HTTPException(401, "Wrong password")
-    start_admin_session(response)
+    start_admin_session(response, remember=body.remember)
     return {"ok": True}
 
 
-def start_admin_session(response: Response) -> None:
+def start_admin_session(response: Response, remember: bool = False) -> None:
     token = secrets.token_urlsafe(32)
-    admin_sessions.add(token)
-    response.set_cookie(ADMIN_COOKIE, token, httponly=True, samesite="lax")
+    if remember:
+        # A cookie that outlives the browser session, backed by the database.
+        db.remember_admin(token, REMEMBER_ADMIN_SECONDS)
+        response.set_cookie(ADMIN_COOKIE, token, max_age=REMEMBER_ADMIN_SECONDS, httponly=True, samesite="lax")
+    else:
+        admin_sessions.add(token)
+        response.set_cookie(ADMIN_COOKIE, token, httponly=True, samesite="lax")
 
 
 @app.post("/api/admin/logout")
 async def admin_logout(request: Request, response: Response):
-    admin_sessions.discard(request.cookies.get(ADMIN_COOKIE, ""))
+    token = request.cookies.get(ADMIN_COOKIE, "")
+    admin_sessions.discard(token)
+    db.forget_admin(token)
     response.delete_cookie(ADMIN_COOKIE)
     return {"ok": True}
 
@@ -470,6 +481,9 @@ class SetupPasswordBody(BaseModel):
 @app.post("/api/setup/password", dependencies=[Depends(require_setup)])
 async def setup_password(body: SetupPasswordBody, response: Response):
     save_config({"ADMIN_PASSWORD_HASH": hash_password(body.password), "ADMIN_PASSWORD": ""})
+    # A new password logs everyone out, including browsers that were remembered.
+    admin_sessions.clear()
+    db.forget_admin()
     start_admin_session(response)  # logged in for the rest of setup
     return {"ok": True}
 

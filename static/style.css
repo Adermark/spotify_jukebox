@@ -106,6 +106,8 @@ select {
 .tabs button { background: var(--surface-2); color: var(--text); }
 .tabs button.active { background: var(--accent); color: var(--accent-text); }
 
+.remember { display: flex; align-items: center; gap: 8px; margin-top: 10px; color: var(--muted); font-size: 0.9rem; }
+.remember input { width: 18px; height: 18px; accent-color: var(--accent); }
 .volume { margin-top: 14px; }
 .volume .help { display: block; color: var(--muted); font-size: 0.85rem; }
 .volume label { display: block; margin-top: 10px; }
