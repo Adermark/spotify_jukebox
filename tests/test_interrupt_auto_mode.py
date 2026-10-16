@@ -111,3 +111,43 @@ def test_do_not_interrupt_when_auto_play_disabled(client, monkeypatch):
     r = add(alice, 1)
     assert r.status_code == 200
     assert len(played_calls) == 0, "Should not interrupt if auto_play setting is False"
+
+
+def test_do_not_interrupt_when_interrupt_auto_mode_disabled(client, monkeypatch):
+    played_calls = []
+
+    async def mock_play_next_now():
+        played_calls.append(True)
+        return {"title": "Song 1"}
+
+    monkeypatch.setattr(playback, "play_next_now", mock_play_next_now)
+    monkeypatch.setattr(playback, "can_play", lambda: True)
+
+    db.update_settings({"interrupt_auto_mode": False})
+
+    playback.active.now_playing = {
+        "uri": "spotify:track:fallback",
+        "is_playing": True,
+        "added_by": None,
+    }
+
+    alice = guest(client, "Alice")
+    r = add(alice, 1)
+    assert r.status_code == 200
+    assert len(played_calls) == 0, "Should not interrupt if interrupt_auto_mode setting is False"
+
+
+def test_admin_settings_interrupt_auto_mode(client):
+    from fastapi.testclient import TestClient
+    from app import main
+
+    admin = TestClient(main.app)
+    assert admin.post("/api/admin/login", json={"password": "secret"}).status_code == 200
+
+    current = admin.get("/api/admin/settings").json()
+    assert current["interrupt_auto_mode"] is True
+
+    updated = admin.put("/api/admin/settings", json={"interrupt_auto_mode": False}).json()
+    assert updated["interrupt_auto_mode"] is False
+    assert db.get_settings()["interrupt_auto_mode"] is False
+

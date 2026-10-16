@@ -124,6 +124,7 @@ Put it on a TV or print it.
   | Allow explicit | Reject songs Spotify marks as explicit |
   | Max song length | In minutes (0 = unlimited) |
   | Auto-play | Start the next song when Spotify is stopped (not when paused mid-song) |
+  | Interrupt auto-mode | When the queue was empty, play newly added songs immediately instead of waiting for fallback music to finish |
   | Hand next song to Spotify | Seconds before the end of the current song |
 - **Users:** see how many songs each user has added, and block or unblock them. Blocking removes their
   waiting songs.

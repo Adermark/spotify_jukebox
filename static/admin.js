@@ -12,6 +12,7 @@ const SETTINGS = [
   ["allow_explicit", "Allow explicit songs", ""],
   ["max_track_minutes", "Max song length (minutes)", "0 = unlimited."],
   ["auto_play", "Auto-play", "Start the next song when playback is stopped (not when paused mid-song)."],
+  ["interrupt_auto_mode", "Interrupt auto-mode", "When the queue was empty, play newly added songs immediately instead of waiting for fallback music to finish."],
   ["push_seconds_before_end", "Hand next song to the player (seconds before end)", "Songs handed over can no longer be removed or reordered."],
 ];
 

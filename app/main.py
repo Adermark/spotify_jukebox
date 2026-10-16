@@ -247,7 +247,8 @@ async def add_to_queue(body: AddBody, user: dict = Depends(require_user)):
     item_id = db.add_item(user["id"], track)
 
     # Interrupt auto-mode (fallback playlist / radio) if the queue was empty.
-    if was_empty and playback.is_in_auto_mode() and s["auto_play"] and playback.can_play():
+    if (was_empty and playback.is_in_auto_mode()
+            and s["auto_play"] and s.get("interrupt_auto_mode", True) and playback.can_play()):
         try:
             await playback.play_next_now()
         except Exception as e:
