@@ -211,6 +211,16 @@ Python environment in `.venv`. Then activate it in the terminal you work in, so 
 | Windows (cmd) | `.venv\Scripts\activate.bat` |
 | macOS / Linux | `source .venv/bin/activate` |
 
+If PowerShell refuses with "running scripts is disabled on this system", allow scripts for your
+own user once, then activate again:
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+`RemoteSigned` runs scripts created on your computer, such as `Activate.ps1`. Downloaded scripts
+still need a signature. It only changes the setting for your user, not for the whole computer.
+
 ## Tests
 
 With the environment activated:
