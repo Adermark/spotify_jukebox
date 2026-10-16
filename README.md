@@ -185,8 +185,10 @@ browser.
 
 ## Making a zip to share
 
+Run `make_dist.py` with the project's Python (see [Development](#development)):
+
 ```bash
-.venv\Scripts\python make_dist.py
+python make_dist.py
 ```
 
 This creates `dist/jukebox-<date>.zip`. Only an explicit list of files goes in, so your `.env`
@@ -197,7 +199,21 @@ included. Docker files and tests are left out too. Whoever unzips it double-clic
 
 `START HERE.txt` in the zip explains this to them.
 
+## Development
+
+Run the start script once (`run.bat` on Windows, `run.command` on macOS) to create the project's
+Python environment in `.venv`. Then activate it in the terminal you work in, so `python` and
+`pytest` use it:
+
+| Platform | Activate |
+|---|---|
+| Windows (PowerShell) | `.venv\Scripts\Activate.ps1` |
+| Windows (cmd) | `.venv\Scripts\activate.bat` |
+| macOS / Linux | `source .venv/bin/activate` |
+
 ## Tests
+
+With the environment activated:
 
 ```bash
 pip install -r requirements-dev.txt

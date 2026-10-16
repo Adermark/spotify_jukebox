@@ -1,5 +1,9 @@
 # Agent and contributor rules
 
+The commands below are the same on Windows and macOS. Run them one line at a time: chaining with
+`&&` doesn't work in Windows PowerShell 5.1. Anything that differs between platforms, such as how
+to run the project's Python, is in [README.md](README.md#development).
+
 ## Branches
 
 | Branch | Purpose |
@@ -15,20 +19,23 @@ Never commit directly to `main` or `develop`. Every change to `develop` goes thr
 
 1. Branch off an up-to-date `develop`:
    ```bash
-   git switch develop && git pull
+   git switch develop
+   git pull
    git switch -c feature/<name>    # or fix/<name>
    ```
 2. Commit, push and open a pull request **into `develop`**.
-3. Merge the PR once tests pass (`pytest`), then delete the branch.
+3. Merge the PR once the tests pass, then delete the branch.
 
 ## Releasing
 
-1. Run `pytest` on an up-to-date `develop` and make sure it passes.
+1. Switch to an up-to-date `develop` and run the tests with the project's Python (see
+   [Development](README.md#development)). They must pass.
 2. Merge `develop` into `main`. A pull request is optional here, since every change was already
    reviewed on its way into `develop`. Either open one from `develop` into `main`, or merge
    directly. Always use `--no-ff`, so each release is its own merge commit on `main`:
    ```bash
-   git switch main && git pull
+   git switch main
+   git pull
    git merge --no-ff develop
    git push
    ```
@@ -38,15 +45,18 @@ Never commit directly to `main` or `develop`. Every change to `develop` goes thr
    git tag -a v1.2.0 -m "v1.2.0"
    git push origin v1.2.0
    ```
-4. Publish a GitHub release for the tag with release notes listing the changes since the previous
-   version:
+4. Build the zip by running `make_dist.py` with the project's Python. It prints the path of the zip
+   it built, e.g. `dist/jukebox-2026-10-16.zip`.
+5. Publish a GitHub release for the tag with the zip attached and release notes listing the
+   changes since the previous version. Use the path that `make_dist.py` printed:
    ```bash
-   gh release create v1.2.0 --title "v1.2.0" --generate-notes
+   gh release create v1.2.0 dist/jukebox-2026-10-16.zip --title "v1.2.0" --generate-notes
    ```
    Edit the generated notes so they describe the changes in plain words for users.
-5. Merge `main` back into `develop` so the branches stay in sync:
+6. Merge `main` back into `develop` so the branches stay in sync:
    ```bash
-   git switch develop && git pull
+   git switch develop
+   git pull
    git merge main
    git push
    ```
