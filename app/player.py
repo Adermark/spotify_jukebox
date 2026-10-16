@@ -61,6 +61,23 @@ class Player:
         self._autostart_after = 0.0  # don't auto-start before this time (gives Spotify time to react)
         self._lock = asyncio.Lock()  # serialises Spotify queue changes from the loop and admin actions
 
+    def is_playing_ours(self) -> bool:
+        """True if a jukebox-queued song is currently loaded or playing."""
+        np = self.now_playing
+        if not np or not np.get("added_by"):
+            return False
+        elapsed = (time.time() - np.get("fetched_at", 0)) * 1000
+        if np.get("duration_ms") and (np.get("progress_ms", 0) + elapsed >= np["duration_ms"]):
+            return False
+        return True
+
+    def is_in_auto_mode(self) -> bool:
+        """True if playback is active but playing non-jukebox music (auto-mode fallback / radio)."""
+        np = self.now_playing
+        if not np or not np.get("is_playing"):
+            return False
+        return not bool(np.get("added_by"))
+
     async def tick(self) -> None:
         if not spotify.is_connected():
             self.now_playing = None

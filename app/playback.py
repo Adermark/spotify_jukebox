@@ -79,5 +79,17 @@ class Playback:
     async def skip(self):
         await self.active.skip()
 
+    def is_playing_ours(self) -> bool:
+        return self.active.is_playing_ours()
+
+    def is_in_auto_mode(self) -> bool:
+        return self.active.is_in_auto_mode()
+
+    def can_play(self) -> bool:
+        if db.get_settings()["playback_mode"] == "sonos":
+            return bool(db.get_settings()["sonos_rooms"])
+        from .spotify import spotify
+        return spotify.is_connected()
+
 
 playback = Playback()
