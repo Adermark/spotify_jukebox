@@ -34,7 +34,8 @@
   async function update() {
     try {
       const [share, state] = await Promise.all([api("GET", "/api/share"), api("GET", "/api/state")]);
-      const pretty = (u) => (u || "").replace(/^http:\/\//, "").replace(/\/$/, "");
+      // Keep http:// so the address becomes a link when pasted into a chat.
+      const pretty = (u) => (u || "").replace(/\/$/, "");
       document.getElementById("url").textContent = pretty(share.friendly);
       document.getElementById("ip").textContent =
         share.ip && share.ip !== share.friendly ? `or ${pretty(share.ip)}` : "";
