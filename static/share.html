@@ -23,7 +23,7 @@
 <div class="share">
   <h1>🎵 Jukebox</h1>
   <p>Scan to add songs to the queue</p>
-  <div class="qr"><img src="/share/qr.svg" alt="QR code for the jukebox link"></div>
+  <div class="qr"><img id="qr" src="/share/qr.svg" alt="QR code for the jukebox link"></div>
   <div id="url" class="url"></div>
   <div id="ip" class="muted"></div>
   <div id="now" class="now"></div>
@@ -31,9 +31,13 @@
 <script src="/static/common.js"></script>
 <script>
   // A display page: put it on a TV or screen at the party.
+  let qr = null;
   async function update() {
     try {
       const [share, state] = await Promise.all([api("GET", "/api/share"), api("GET", "/api/state")]);
+      // The address changes when the machine moves to another network: redraw the QR code too.
+      if (qr !== null && share.qr !== qr) document.getElementById("qr").src = `/share/qr.svg?t=${Date.now()}`;
+      qr = share.qr;
       const pretty = (u) => (u || "").replace(/^http:\/\//, "").replace(/\/$/, "");
       document.getElementById("url").textContent = pretty(share.friendly);
       document.getElementById("ip").textContent =
