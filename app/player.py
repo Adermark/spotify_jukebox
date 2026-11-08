@@ -50,6 +50,30 @@ def restricted_message(pb: dict | None) -> str | None:
             "(you can connect that to the speaker by cable or Bluetooth).")
 
 
+def is_paused() -> bool:
+    """The admin paused the jukebox: auto-play waits until it's resumed. Kept across restarts,
+    so a jukebox that was paused (or shut down from the admin page) doesn't start by itself."""
+    return bool(db.get_state("paused", False))
+
+
+_paused_at = 0.0
+
+
+def set_paused(paused: bool) -> None:
+    global _paused_at
+    if paused:
+        _paused_at = time.time()
+    if paused != is_paused():
+        db.set_state("paused", True if paused else None)
+
+
+def seen_playing() -> None:
+    """The speakers are playing: someone pressed play (here, in Spotify or in the Sonos app).
+    A reading taken just before a pause doesn't count."""
+    if time.time() - _paused_at > 5:
+        set_paused(False)
+
+
 class Player:
     def __init__(self):
         self.now_playing: dict | None = None
@@ -98,11 +122,13 @@ class Player:
         self._stopped_since = (self._stopped_since or now) if looks_stopped else None
         if self._stopped_since and now - self._stopped_since >= STOPPED_GRACE_SECONDS:
             await self._requeue_unplayed(spotify_stopped=True)
-            if db.get_settings()["auto_play"] and now >= self._autostart_after:
+            if db.get_settings()["auto_play"] and now >= self._autostart_after and not is_paused():
                 if await self.play_next_now() is not None:
                     return
-        if pb and pb.get("is_playing") and not restricted_message(pb):
-            self.warning = None
+        if pb and pb.get("is_playing"):
+            seen_playing()
+            if not restricted_message(pb):
+                self.warning = None
 
         if not item or item.get("type") != "track":
             if self._last_uri is not None:
@@ -187,6 +213,26 @@ class Player:
                     db.mark_sent(target["id"])
             log.info("Jumped to: %s (added by %s)", target["title"], target["added_by"])
             return target
+
+    async def pause_music(self) -> None:
+        pb = await spotify.playback()
+        if restricted_message(pb):
+            raise SpotifyError(409, restricted_message(pb))
+        set_paused(True)
+        if pb and pb.get("is_playing"):
+            await spotify.pause()
+
+    async def resume_music(self) -> dict | None:
+        """Continue the paused song, or start our queue if nothing is loaded."""
+        pb = await spotify.playback()
+        if restricted_message(pb):
+            raise SpotifyError(409, restricted_message(pb))
+        set_paused(False)
+        if pb and pb.get("item") and pb.get("progress_ms"):
+            if not pb.get("is_playing"):
+                await spotify.resume((pb.get("device") or {}).get("id"))
+            return None
+        return await self.play_next_now()
 
     async def interrupt_auto_mode(self, play) -> dict | None:
         """Fade the fallback music out and run play() to start the jukebox queue."""

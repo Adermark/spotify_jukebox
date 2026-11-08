@@ -43,6 +43,7 @@ Every next time
 Double-click run.bat (Mac: run.command). The admin page opens; it shows the link
 and QR code for guests.
 Guests must be on the same Wi-Fi/network as this computer.
-Close the window to stop the jukebox.
+To stop the jukebox, press "Stop jukebox" on the admin page,
+or close the window.
 
 More details: README.md

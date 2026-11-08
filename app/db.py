@@ -63,6 +63,7 @@ DEFAULT_SETTINGS = {
     "fair_rotation": True,          # users with fewer songs queued go first
     "allow_consecutive": False,     # same user twice in a row
     "no_duplicates": True,          # reject a track already in the queue
+    "repeat_gap_songs": 0,          # a song can't be requested again until this many others played (0 = off)
     "allow_explicit": True,
     "max_track_minutes": 10,        # 0 = unlimited
     "push_seconds_before_end": 15,  # when to hand the next song to Spotify
@@ -337,6 +338,18 @@ def mark_now_playing(track_uri: str | None) -> None:
             "UPDATE queue_items SET status = 'played', played_at = ? WHERE status = 'sent' AND sent_at < ?",
             (now, row["sent_at"]),
         )
+
+
+def recently_played(limit: int) -> list[dict]:
+    """The last `limit` jukebox songs that played (or were skipped), newest first; the one
+    playing now comes first."""
+    with connect() as conn:
+        rows = conn.execute(
+            _ITEM_SELECT + " WHERE q.status IN ('playing', 'played')"
+            " ORDER BY q.status = 'playing' DESC, q.played_at DESC, q.id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [dict(r) for r in rows]
 
 
 def history(limit: int = 200) -> list[dict]:

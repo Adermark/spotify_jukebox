@@ -8,7 +8,7 @@ import logging
 import time
 
 from . import db
-from .player import STOPPED_GRACE_SECONDS, next_queued, upcoming
+from .player import STOPPED_GRACE_SECONDS, is_paused, next_queued, seen_playing, set_paused, upcoming
 from .sonos import SonosController, SonosError
 from .spotify import spotify
 from .volume import AutoModeVolume
@@ -72,9 +72,11 @@ class SonosPlayer:
         self._stopped_since = (self._stopped_since or now) if st.state == "STOPPED" else None
         if self._stopped_since and now - self._stopped_since >= STOPPED_GRACE_SECONDS:
             await self._requeue_lost(st)
-            if db.get_settings()["auto_play"] and now >= self._autostart_after:
+            if db.get_settings()["auto_play"] and now >= self._autostart_after and not is_paused():
                 if await self.play_next_now() is not None:
                     return
+        if st.state == "PLAYING":
+            seen_playing()
 
         key = (st.queue_position, st.uri, st.from_queue)
         if key != self._last_key:
@@ -187,6 +189,21 @@ class SonosPlayer:
                 await self.c.seek(position_ms)
             self._autostart_after = time.time() + 10
             self.hold(4)
+
+    async def pause_music(self) -> None:
+        set_paused(True)
+        await self.c.pause()
+
+    async def resume_music(self) -> dict | None:
+        """Continue the paused song, or start our queue if nothing is loaded."""
+        set_paused(False)
+        st = await self.c.status()
+        if st and st.state == "PAUSED_PLAYBACK":
+            await self.c.resume()
+            return None
+        if st and st.state == "PLAYING":
+            return None
+        return await self.play_next_now()
 
     async def interrupt_auto_mode(self, play) -> dict | None:
         """Fade the fallback music out and run play() to start the jukebox queue."""

@@ -124,6 +124,7 @@ Put it on a TV or print it.
   | Fair rotation | Everyone's 1st song plays before anyone's 2nd, and so on |
   | Allow back-to-back | When off, another user's song is put in between whenever possible |
   | Block duplicates | Reject a song already in the queue |
+  | Songs between repeats | A song can't be requested again until this many other songs have played. Live, remastered and other versions count as the same song (matched on title and first artist, so it isn't perfect). Guests are told why and how many songs to wait. 0 = off |
   | Allow explicit | Reject songs Spotify marks as explicit |
   | Max song length | In minutes (0 = unlimited) |
   | Auto-play | Start the next song when Spotify is stopped (not when paused mid-song) |
@@ -134,6 +135,11 @@ Put it on a TV or print it.
 - **History:** every song that was requested, with who added it, when, and what happened to it.
 - **Play next now:** starts the next song immediately. Use it to start the party, or when nothing is
   playing.
+- **Pause / Resume:** pauses the music. While paused, auto-play doesn't start anything, even if the
+  jukebox is restarted. Resume continues the song, or starts the queue if nothing is loaded. Pressing
+  play in Spotify or the Sonos app also ends the pause.
+- **Stop jukebox:** pauses the music and closes the jukebox program. It stays paused when you start it
+  again, so it doesn't start playing by itself. (Just closing the window doesn't pause anything.)
 - **Skip:** skips to the next jukebox song. If that song isn't lined up in Spotify's queue yet, it's
   added first, so the skip lands on it instead of the next song in Spotify's playlist or album.
 

@@ -9,6 +9,7 @@ const SETTINGS = [
   ["fair_rotation", "Fair rotation", "Everyone's 1st song plays before anyone's 2nd, and so on."],
   ["allow_consecutive", "Allow back-to-back songs from the same user", "When off, another user's song is played in between whenever possible."],
   ["no_duplicates", "Block duplicates", "Reject a song that's already in the queue."],
+  ["repeat_gap_songs", "Songs between repeats", "A song can't be requested again until this many other songs have played. Other versions (live, remastered…) count as the same song. 0 = off."],
   ["allow_explicit", "Allow explicit songs", ""],
   ["max_track_minutes", "Max song length (minutes)", "0 = unlimited."],
   ["auto_play", "Auto-play", "Start the next song when playback is stopped (not when paused mid-song)."],
@@ -26,6 +27,7 @@ async function checkStatus() {
   if (!s.admin) return false;
   renderStatus(s);
   renderNowPlaying(s.now_playing);
+  renderPause(s);
   renderVolume(s.volume);
   return true;
 }
@@ -159,6 +161,30 @@ $("logout").addEventListener("click", async () => {
   await api("POST", "/api/admin/logout");
   refresh();
 });
+
+// Pause, or Resume when paused or stopped (resuming with nothing loaded starts the queue).
+let playingNow = false;
+function renderPause(s) {
+  playingNow = Boolean(s.now_playing && s.now_playing.is_playing);
+  $("pause").textContent = playingNow ? "⏸ Pause" : "▶ Resume";
+  $("pause").title = s.paused && !playingNow ? "Paused: auto-play waits until you resume" : "";
+}
+$("pause").addEventListener("click", async () => {
+  await action("POST", playingNow ? "/api/admin/pause" : "/api/admin/resume", playingNow ? "Paused" : "Resumed");
+  setTimeout(checkStatus, 800);
+});
+
+$("shutdown").addEventListener("click", async () => {
+  if (!confirm("Stop the jukebox? The music pauses and the jukebox program closes. "
+    + "Guests can't add songs until it's started again.")) return;
+  try {
+    await api("POST", "/api/admin/shutdown");
+    stopped = true;
+    $("panel").classList.add("hidden");
+    $("stopped").classList.remove("hidden");
+  } catch (e) { toast(e.message, true); }
+});
+let stopped = false;
 
 $("play-next").addEventListener("click", () => action("POST", "/api/admin/play-next", "Playing next song"));
 $("skip").addEventListener("click", () => action("POST", "/api/admin/skip", "Skipped"));
@@ -392,5 +418,6 @@ async function refresh() {
 
 refresh();
 setInterval(async () => {
+  if (stopped) return;
   if (await checkStatus() && currentTab !== "settings") refreshTab();
 }, 4000);
