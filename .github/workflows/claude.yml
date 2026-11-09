@@ -1,0 +1,32 @@
+# Copy this file to .github/workflows/claude.yml in any repo that should get
+# the Claude reviewer. All logic lives in Adermark/claude-review.
+#
+# Usage: pick the bot user under "Reviewers" on a PR, or mention it in a comment.
+name: Claude
+
+on:
+  pull_request:
+    types: [review_requested]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  pull_request_review:
+    types: [submitted]
+
+# The bot acts with its own token (BOT_GITHUB_TOKEN), so the built-in
+# GITHUB_TOKEN only needs to read the code.
+permissions:
+  contents: read
+
+jobs:
+  claude:
+    uses: Adermark/claude-review/.github/workflows/claude-review.yml@main
+    with:
+      bot_user: mimer-review
+      # model: claude-opus-5-5
+      # extra_instructions: |
+      #   This is a Python/Flask app; pay extra attention to SQL injection.
+    secrets:
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+      BOT_GITHUB_TOKEN: ${{ secrets.BOT_GITHUB_TOKEN }}
