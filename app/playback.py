@@ -4,7 +4,7 @@ import logging
 
 from . import db
 from .config import config
-from .player import Player
+from .player import Player, is_paused
 from .sonos import SonosController, SonosError
 from .sonos_player import SonosPlayer
 from .spotify import SpotifyError
@@ -75,6 +75,16 @@ class Playback:
 
     async def play_next_now(self):
         return await self.active.play_next_now()
+
+    async def pause(self) -> None:
+        await self.active.pause_music()
+
+    async def resume(self) -> dict | None:
+        return await self.active.resume_music()
+
+    @property
+    def paused(self) -> bool:
+        return is_paused()
 
     async def interrupt_auto_mode(self):
         """Fade out the fallback music and start the jukebox queue."""

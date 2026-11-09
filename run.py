@@ -7,4 +7,7 @@ import uvicorn
 from app.config import ensure_port
 
 if __name__ == "__main__":
-    uvicorn.run("app.main:app", host="0.0.0.0", port=ensure_port())
+    server = uvicorn.Server(uvicorn.Config("app.main:app", host="0.0.0.0", port=ensure_port()))
+    import app.main
+    app.main.server = server  # lets "Stop jukebox" on the admin page end the program
+    server.run()

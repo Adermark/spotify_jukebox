@@ -2,6 +2,7 @@ import asyncio
 import logging
 import re
 import secrets
+import signal
 import threading
 import webbrowser
 from contextlib import asynccontextmanager
@@ -15,7 +16,8 @@ from pydantic import BaseModel, Field
 from . import db
 from .config import check_password, config, hash_password
 from .config import save as save_config
-from .player import upcoming
+from .player import set_paused, upcoming
+from .queue_logic import song_key, songs_until_allowed
 from .playback import playback
 from .sonos import SonosError
 from .mdns import mdns
@@ -39,6 +41,9 @@ admin_sessions: set[str] = set()
 # Until setup is finished, the setup page only works with this one-time token. It's shown in
 # the server window (and opened in the browser), so only whoever started the jukebox can use it.
 setup_token = secrets.token_urlsafe(16)
+
+# The running uvicorn server, set by run.py, so the admin page can stop the program.
+server = None
 log = logging.getLogger("jukebox")
 
 
@@ -239,6 +244,8 @@ async def add_to_queue(body: AddBody, background: BackgroundTasks, user: dict = 
 
     # Look the track up ourselves rather than trusting details from the browser.
     track = await spotify.track(m.group(1))
+    if s["repeat_gap_songs"]:
+        check_not_repeated(track, s["repeat_gap_songs"])
     if s["no_duplicates"] and db.track_is_active(track["uri"]):
         raise HTTPException(409, "That song is already in the queue")
     if not s["allow_explicit"] and track["explicit"]:
@@ -256,6 +263,20 @@ async def add_to_queue(body: AddBody, background: BackgroundTasks, user: dict = 
         background.add_task(interrupt_auto_mode)
 
     return {"id": item_id}
+
+
+def check_not_repeated(track: dict, gap: int) -> None:
+    """Refuse a song (or another version of it) that's waiting in the queue or played recently."""
+    key = song_key(track["title"], track["artists"])
+    if any(song_key(i["title"], i["artists"]) == key for i in db.items_with_status("queued", "sent")):
+        raise HTTPException(409, f"A version of \"{track['title']}\" is already in the queue")
+    recent = db.recently_played(gap)
+    wait = songs_until_allowed(track, recent, gap)
+    if wait is None:
+        return
+    when = "is playing right now" if song_key(recent[0]["title"], recent[0]["artists"]) == key else "played recently"
+    raise HTTPException(409, f"\"{track['title']}\" {when}. To give other songs a turn, it can be requested "
+                             f"again after {wait} more song{'s' if wait != 1 else ''}.")
 
 
 async def interrupt_auto_mode() -> None:
@@ -318,6 +339,7 @@ async def admin_status(request: Request):
         "admin": True,
         "connected": spotify.is_connected(),
         "error": playback.error,
+        "paused": playback.paused,
         "playback_mode": db.get_settings()["playback_mode"],
         "volume": playback.volume_status(),
         "now_playing": playback.now_playing,
@@ -411,6 +433,38 @@ async def admin_play_next():
     if item is None:
         raise HTTPException(409, "The queue is empty")
     return {"playing": item["title"]}
+
+
+@app.post("/api/admin/pause", dependencies=[Depends(require_admin)])
+async def admin_pause():
+    await playback.pause()
+    return {"ok": True}
+
+
+@app.post("/api/admin/resume", dependencies=[Depends(require_admin)])
+async def admin_resume():
+    item = await playback.resume()
+    return {"playing": item["title"] if item else None}
+
+
+@app.post("/api/admin/shutdown", dependencies=[Depends(require_admin)])
+async def admin_shutdown(background: BackgroundTasks):
+    """Pause the music and stop the jukebox program. It stays paused when started again."""
+    try:
+        await playback.pause()
+    except Exception as e:  # shut down anyway
+        log.warning("Couldn't pause before shutting down: %s", e)
+        set_paused(True)
+    background.add_task(stop_server)
+    return {"ok": True}
+
+
+def stop_server() -> None:
+    log.info("Shutting down (requested from the admin page)")
+    if server is not None:
+        server.should_exit = True  # the same clean stop as pressing Ctrl+C
+    else:
+        signal.raise_signal(signal.SIGINT)
 
 
 @app.post("/api/admin/skip", dependencies=[Depends(require_admin)])

@@ -1,4 +1,5 @@
 """Ordering of the jukebox queue. Pure functions, so the rules are easy to test."""
+import re
 from collections import Counter
 
 
@@ -51,3 +52,33 @@ def _spread(items: list[dict], last_user_id: int | None) -> list[dict]:
         out.append(item)
         last_user_id = item["user_id"]
     return out
+
+
+# "Song - Remastered 2011", "Song (Live)", "Song [Radio Edit]", "Song - feat. X": the same song.
+_VERSION_SUFFIX = re.compile(r"\s+-\s+.*$")
+_BRACKETS = re.compile(r"[(\[].*?[)\]]")
+_NON_WORD = re.compile(r"[\W_]+")
+
+
+def song_key(title: str, artists: str) -> str:
+    """A rough identity for a song, so different versions of it count as the same song.
+
+    Uses the title without version notes and the first artist. It can't be perfect: a
+    "Part 2" after a dash also counts as the same song.
+    """
+    def clean(text: str) -> str:
+        return _NON_WORD.sub(" ", text).strip().lower()
+    name = clean(_BRACKETS.sub(" ", _VERSION_SUFFIX.sub("", title))) or clean(title)
+    return f"{name}|{clean((artists or '').split(',')[0])}"
+
+
+def songs_until_allowed(track: dict, recent: list[dict], gap: int) -> int | None:
+    """How many more songs must play before track may be requested again, or None if it may.
+
+    recent: the last played songs, newest first (the one playing now first).
+    """
+    key = song_key(track["title"], track["artists"])
+    for played_ago, item in enumerate(recent[:gap]):
+        if song_key(item["title"], item["artists"]) == key:
+            return gap - played_ago
+    return None
