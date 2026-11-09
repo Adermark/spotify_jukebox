@@ -105,9 +105,17 @@ Put it on a TV or print it.
 - Windows asks to allow Python through the firewall the first time it's run. If guests can't
   connect, check that inbound connections for `python.exe` are allowed, including on **Public**
   networks: Windows often marks new office or guest Wi-Fi networks as Public.
-- Some office and guest Wi-Fi networks block devices from talking to each other ("client
-  isolation"). Then the jukebox can't be reached from phones at all, and you'd need to host it
-  somewhere else.
+- Some Wi-Fi networks block devices from talking to each other ("client isolation" or "AP
+  isolation"). Guest networks almost always do, and many office networks too. Phones on the same
+  Wi-Fi then can't reach the jukebox at all, neither by name nor by IP, even though the host
+  computer can open the link itself. To fix it, try in this order:
+  1. In the router's settings, turn off the option called something like "AP isolation",
+     "client isolation" or "allow devices to communicate". On a guest network, switch to the
+     main network instead.
+  2. Connect the host computer to the router with a network cable. On some routers the isolation
+     only applies between Wi-Fi devices.
+  3. If you can't change the router, turn on the hotspot on a phone and connect the host computer
+     and the guests' phones to it. The guest link updates by itself within 30 seconds.
 
 ## Admin page (`/admin`)
 
